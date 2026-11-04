@@ -1,0 +1,227 @@
+###############################################################################
+# 上游数据源
+#
+# 字段与许可详见 README "Data sources"；解析器见 src/geobuild/origins.py。
+###############################################################################
+
+[settings]
+# 仓库标识；留空自动检测：$GITHUB_REPOSITORY → origin。
+repository = ""
+# 缓存 TTL；git 源 revision 未变时复用。
+cache_ttl = 21600
+
+
+# ---- 域名 ----
+
+# DLC 发布资产；include 已展开，属性保留为规则的 :@attr 后缀。
+[sources.dlc]
+kind = "dlc"
+repo = "v2fly/domain-list-community"
+ref = "latest"
+url = "https://github.com/v2fly/domain-list-community/releases/download/{revision}/dlc.dat_plain.yml"
+url_fallback = "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat_plain.yml"
+expect_min = 1
+
+# 国内解析加速表。
+[sources.china_domain]
+kind = "dnsmasq_china"
+repo = "felixonmars/dnsmasq-china-list"
+ref = "master"
+url = "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/{revision}/accelerated-domains.china.conf"
+expect_min = 62000
+
+# GFW 原始列表（AutoProxy/base64）。
+[sources.gfwlist]
+kind = "gfwlist"
+repo = "gfwlist/gfwlist"
+ref = "master"
+url = "https://raw.githubusercontent.com/gfwlist/gfwlist/{revision}/gfwlist.txt"
+expect_min = 2500
+
+
+# ---- 中国 IP：BGP 运营商分类（gaoyifan，MIT） ----
+
+[sources.china46]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/china46.txt"
+expect_min = 5000
+
+[sources.china4]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/china.txt"
+expect_min = 3000
+
+[sources.china6]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/china6.txt"
+expect_min = 1500
+
+[sources.telecom]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/chinanet46.txt"
+expect_min = 1500
+
+[sources.unicom]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/unicom46.txt"
+expect_min = 1200
+
+[sources.mobile]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/cmcc46.txt"
+expect_min = 500
+
+[sources.cernet]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/cernet46.txt"
+expect_min = 80
+
+
+# ---- RIR 委派数据（登记归属；登记国家 ≠ 实际位置） ----
+
+[sources.rir_apnic]
+kind = "rir"
+url = "https://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest"
+expect_min = 3000
+
+[sources.rir_arin]
+kind = "rir"
+url = "https://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest"
+expect_min = 1
+
+[sources.rir_ripe]
+kind = "rir"
+url = "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest"
+expect_min = 10
+
+[sources.rir_lacnic]
+kind = "rir"
+url = "https://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-latest"
+# 无 CN 记录，保留 allow_empty。
+allow_empty = true
+expect_min = 1
+
+[sources.rir_afrinic]
+kind = "rir"
+url = "https://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-latest"
+# 无 CN 记录，保留 allow_empty。
+allow_empty = true
+expect_min = 1
+
+
+# ---- 地理使用地（DB-IP Lite，CC BY 4.0；月度缺失回落上月） ----
+
+[sources.geo_cn]
+kind = "dbip_country"
+url = "https://download.db-ip.com/free/dbip-country-lite-{year}-{month}.csv.gz"
+url_fallback = "https://download.db-ip.com/free/dbip-country-lite-{prev_year}-{prev_month}.csv.gz"
+expect_min = 9000
+
+
+# ---- IANA special-purpose（仅 Globally Reachable = False；父块含全球子块时丢弃） ----
+
+[sources.iana_v4_special]
+kind = "iana_special"
+url = "https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry-1.csv"
+expect_min = 10
+
+[sources.iana_v6_special]
+kind = "iana_special"
+url = "https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry-1.csv"
+expect_min = 5
+
+
+# ---- BGP 前缀（iptoasn，PDDL v1.0；每小时更新） ----
+
+# 组播固定段（special-purpose 不含）。
+[sources.iana_multicast]
+kind = "static"
+entries = ["224.0.0.0/4", "ff00::/8"]
+expect_min = 2
+
+[sources.bgp_v4]
+kind = "ip2asn"
+url = "https://iptoasn.com/data/ip2asn-v4.tsv.gz"
+expect_min = 1
+
+[sources.bgp_v6]
+kind = "ip2asn"
+url = "https://iptoasn.com/data/ip2asn-v6.tsv.gz"
+expect_min = 1
+
+
+# ---- 服务官方网络范围 ----
+
+# Telegram 官方 CIDR。
+[sources.telegram_ip]
+kind = "cidr"
+url = "https://core.telegram.org/resources/cidr.txt"
+expect_min = 5
+
+# Cloudflare 官方 CIDR（共享 Anycast，非单服务）。
+[sources.cloudflare_ip]
+kind = "cloudflare"
+url = "https://api.cloudflare.com/client/v4/ips"
+expect_min = 8
+
+# Google 自有服务（goog.json）。
+[sources.google_ip]
+kind = "google_ipranges"
+url = "https://www.gstatic.com/ipranges/goog.json"
+expect_min = 50
+
+# GCP 客户可用段（cloud.json）。
+[sources.gcloud_ip]
+kind = "google_ipranges"
+url = "https://www.gstatic.com/ipranges/cloud.json"
+expect_min = 50
+
+# AWS 范围（按 service 过滤；默认 CloudFront）。
+[sources.aws_ip]
+kind = "aws_ipranges"
+url = "https://ip-ranges.amazonaws.com/ip-ranges.json"
+expect_min = 20
+
+# GitHub meta（所选 key）。
+[sources.github_ip]
+kind = "github_meta"
+url = "https://api.github.com/meta"
+expect_min = 30
+
+
+# ---- 本地固定集合 ----
+
+# 隐私探测站补充（DLC category-ip-geo-detect 未收录；domain/cn 会 subtract）。
+[sources.privacy_domain]
+kind = "static"
+entries = [
+  "doileak.com",
+  "ipv6-test.com",
+  "whatleaks.com",
+]
+
+[sources.private_domain]
+kind = "static"
+entries = [
+  "localhost",
+  "localdomain",
+  "local",
+  "lan",
+  "home.arpa",
+  "in-addr.arpa",
+  "ip6.arpa",
+]
