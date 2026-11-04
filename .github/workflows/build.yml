@@ -1,0 +1,164 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "config/**"
+      - "src/**"
+      - "tests/**"
+      - "Makefile"
+      - ".github/workflows/build.yml"
+      - ".github/scripts/**"
+  schedule:
+    # 每天 04:23 UTC（北京时间 12:23）重建一次
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+    inputs:
+      force_publish:
+        description: "忽略收缩保护，强制发布"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ruleset-build
+  cancel-in-progress: false
+
+env:
+  PYTHONPATH: src
+  # 只跟随 1.14.x，与 README 的版本说明保持一致
+  SING_BOX_SERIES: "v1.14."
+
+jobs:
+  build:
+    name: build and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      # Actions 全部钉到 commit SHA（v4.2.2），避免上游 tag 漂移
+      - name: Checkout main
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          # token 不落盘；取基线时显式携带凭据
+          persist-credentials: false
+
+      # actions/setup-python v5.6.0
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Install sing-box
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # 上游 API 抖动时用它兜底，避免一次 5xx 打断流水线
+          SING_BOX_FALLBACK: "v1.14.4"
+        run: |
+          set -euo pipefail
+          mkdir -p bin
+          version="${SING_BOX_VERSION:-}"
+          if [ -z "$version" ] && command -v jq >/dev/null 2>&1; then
+            api="https://api.github.com/repos/SagerNet/sing-box/releases"
+            if [ -n "${GH_TOKEN:-}" ]; then
+              response=$(curl -sS --retry 2 \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "${api}?per_page=100" || true)
+            else
+              response=$(curl -sS --retry 2 \
+                -H "Accept: application/vnd.github+json" \
+                "${api}?per_page=100" || true)
+            fi
+            jq_filter='[.[]? | select(.prerelease == false) | .tag_name'
+            jq_filter+=' | select(startswith($p))][0] // empty'
+            version=$(printf '%s' "$response" \
+              | jq -r --arg p "$SING_BOX_SERIES" "$jq_filter" \
+                2>/dev/null || true)
+            if [ -z "$version" ]; then
+              echo "::warning::cannot resolve ${SING_BOX_SERIES}x"
+              printf 'API response: %.300s\n' "$response"
+            fi
+          fi
+          if [ -z "$version" ]; then
+            version="${SING_BOX_FALLBACK}"
+          fi
+          echo "installing sing-box ${version}"
+          base="https://github.com/SagerNet/sing-box/releases/download"
+          plain="${version#v}"
+          curl -fsSL --retry 3 --retry-delay 2 -o /tmp/sing-box.tar.gz \
+            "${base}/${version}/sing-box-${plain}-linux-amd64.tar.gz"
+          tar -xzf /tmp/sing-box.tar.gz -C /tmp
+          binary="/tmp/sing-box-${plain}-linux-amd64/sing-box"
+          if [ ! -f "$binary" ]; then
+            echo "release archive did not contain $binary" >&2
+            exit 1
+          fi
+          install -m 0755 "$binary" bin/sing-box
+          bin/sing-box version
+
+      # actions/cache v4.3.0
+      - name: Restore download cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .cache
+          key: geo-cache-${{ github.run_id }}
+          restore-keys: |
+            geo-cache-
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Fetch previously published rule-set
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GH_TOKEN}"
+          remote+="@github.com/${REPOSITORY}.git"
+          if git ls-remote --exit-code --heads "$remote" rule-set \
+            >/dev/null 2>&1; then
+            git fetch --no-tags --depth=1 "$remote" rule-set
+            mkdir -p baseline
+            git archive FETCH_HEAD | tar -x -C baseline
+            echo "baseline: $(jq -r '.generated_at' baseline/manifest.json)"
+          else
+            echo "no rule-set branch yet, skipping baseline"
+          fi
+
+      - name: Build rule-sets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # inputs 是用户可控值，经 env 传入，不要直接插值
+          FORCE_PUBLISH: ${{ inputs.force_publish }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          extra=""
+          if [ "${FORCE_PUBLISH}" = "true" ]; then
+            extra="--force"
+          fi
+          python -m geobuild build \
+            --out dist \
+            --baseline baseline \
+            --sing-box bin/sing-box \
+            --repository "${REPOSITORY}" \
+            ${extra}
+
+      # actions/upload-artifact v4.6.2
+      - name: Upload artefacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rulesets
+          path: dist
+          retention-days: 7
+
+      - name: Publish to rule-set branch
+        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish.sh dist rule-set

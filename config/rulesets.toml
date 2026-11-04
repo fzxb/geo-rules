@@ -1,0 +1,417 @@
+###############################################################################
+# 输出规则集定义
+#
+#   type    domain | ip
+#   sources "源名" 或 "源名:选择器"
+#           dlc:cn  dlc:google  rir_apnic:CN  bgp_v4:2906  gfwlist  china46
+#   union   合并其它规则集（自动做拓扑排序）
+#   family  IP 规则集的地址族：4 / 6 / any
+#   exclude_attrs 丢弃带指定 DLC 属性的条目（service/* 用 ["cn"]，
+#           中国本地节点由 domain/cn 负责，避免它们出现在代理合集里）
+#   name 中的 "/" 会变成输出目录层级
+#
+# expect_min 是对最终条目数的下限保护，低于该值直接判定为上游异常。
+###############################################################################
+
+# ============================== 域名 ==============================
+
+[[ruleset]]
+name = "domain/cn"
+type = "domain"
+description = "中国大陆直连域名（DLC cn + @cn + 国内解析加速表，已扣除 gfw 与隐私探测服务）"
+sources = ["dlc:cn", "dlc:*@cn", "china_domain"]
+# 被封锁的域名绝不能进直连集合：先建 gfw，再把它从 cn 里减掉。
+subtract = ["domain/gfw", "domain/privacy"]
+expect_min = 62000
+
+[[ruleset]]
+name = "domain/gfw"
+type = "domain"
+description = "GFW 污染的域名（gfwlist，已应用 @@ 白名单）"
+sources = ["gfwlist"]
+# 通配规则用 domain_regex 精确保留语义（不丢弃、也不扩大到父域）。
+allow_regex = true
+expect_min = 2500
+
+[[ruleset]]
+name = "domain/private"
+type = "domain"
+description = "内网 / 保留域名"
+sources = ["dlc:private", "private_domain"]
+expect_min = 20
+
+[[ruleset]]
+name = "domain/ads"
+type = "domain"
+description = "广告域名（等价 geosite:category-ads-all）"
+sources = ["dlc:category-ads-all"]
+expect_min = 500
+
+[[ruleset]]
+name = "domain/non-cn"
+type = "domain"
+description = "非中国大陆域名（等价 geosite:geolocation-!cn，反选路由用）"
+sources = ["dlc:geolocation-!cn"]
+expect_min = 15000
+
+# ---- 常用国外服务（可单独引用，也被 domain/proxy 合并） ----
+
+[[ruleset]]
+name = "domain/service/google"
+type = "domain"
+description = "Google（含 gstatic / recaptcha）"
+sources = ["dlc:google"]
+exclude_attrs = ["cn"]
+expect_min = 500
+
+[[ruleset]]
+name = "domain/service/youtube"
+type = "domain"
+description = "YouTube"
+sources = ["dlc:youtube"]
+exclude_attrs = ["cn"]
+expect_min = 100
+
+[[ruleset]]
+name = "domain/service/netflix"
+type = "domain"
+description = "Netflix"
+sources = ["dlc:netflix"]
+exclude_attrs = ["cn"]
+expect_min = 12
+
+[[ruleset]]
+name = "domain/service/disney"
+type = "domain"
+description = "Disney / Disney+"
+sources = ["dlc:disney"]
+exclude_attrs = ["cn"]
+expect_min = 100
+
+[[ruleset]]
+name = "domain/service/spotify"
+type = "domain"
+description = "Spotify"
+sources = ["dlc:spotify"]
+exclude_attrs = ["cn"]
+expect_min = 12
+
+[[ruleset]]
+name = "domain/service/telegram"
+type = "domain"
+description = "Telegram"
+sources = ["dlc:telegram"]
+exclude_attrs = ["cn"]
+expect_min = 10
+
+[[ruleset]]
+name = "domain/service/twitter"
+type = "domain"
+description = "X / Twitter"
+sources = ["dlc:twitter"]
+exclude_attrs = ["cn"]
+expect_min = 10
+
+[[ruleset]]
+name = "domain/service/ai"
+type = "domain"
+description = "AI 服务（OpenAI / Anthropic / Gemini 等，geosite:category-ai-!cn）"
+sources = ["dlc:category-ai-!cn"]
+exclude_attrs = ["cn"]
+expect_min = 100
+
+[[ruleset]]
+name = "domain/service/github"
+type = "domain"
+description = "GitHub（含 raw / gist / pages）"
+sources = ["dlc:github"]
+exclude_attrs = ["cn"]
+expect_min = 30
+
+[[ruleset]]
+name = "domain/service/apple"
+type = "domain"
+description = "Apple（已排除 DLC 标记 @cn 的国内节点，那部分在 domain/cn）"
+sources = ["dlc:apple"]
+exclude_attrs = ["cn"]
+expect_min = 800
+
+[[ruleset]]
+name = "domain/service/microsoft"
+type = "domain"
+description = "Microsoft（已排除 @cn 国内节点）"
+sources = ["dlc:microsoft"]
+exclude_attrs = ["cn"]
+expect_min = 300
+
+[[ruleset]]
+name = "domain/service/steam"
+type = "domain"
+description = "Steam（已排除 @cn 国内节点）"
+sources = ["dlc:steam"]
+exclude_attrs = ["cn"]
+expect_min = 20
+
+[[ruleset]]
+name = "domain/service/tiktok"
+type = "domain"
+description = "TikTok / ByteDance"
+sources = ["dlc:tiktok"]
+exclude_attrs = ["cn"]
+expect_min = 15
+
+[[ruleset]]
+name = "domain/service/meta"
+type = "domain"
+description = "Meta（Facebook / Instagram / WhatsApp）"
+sources = ["dlc:facebook", "dlc:instagram", "dlc:whatsapp"]
+exclude_attrs = ["cn"]
+expect_min = 250
+
+[[ruleset]]
+name = "domain/service/discord"
+type = "domain"
+description = "Discord"
+sources = ["dlc:discord"]
+exclude_attrs = ["cn"]
+expect_min = 15
+
+[[ruleset]]
+name = "domain/service/twitch"
+type = "domain"
+description = "Twitch"
+sources = ["dlc:twitch"]
+exclude_attrs = ["cn"]
+expect_min = 15
+
+[[ruleset]]
+name = "domain/service/reddit"
+type = "domain"
+description = "Reddit"
+sources = ["dlc:reddit"]
+exclude_attrs = ["cn"]
+expect_min = 5
+
+[[ruleset]]
+name = "domain/service/epicgames"
+type = "domain"
+description = "Epic Games Store / Fortnite"
+sources = ["dlc:epicgames"]
+exclude_attrs = ["cn"]
+expect_min = 15
+
+[[ruleset]]
+name = "domain/service/amazon"
+type = "domain"
+description = "Amazon 购物（不含 AWS，AWS 见 ip/service/aws）"
+sources = ["dlc:amazon"]
+exclude_attrs = ["cn"]
+expect_min = 100
+
+[[ruleset]]
+name = "domain/privacy"
+type = "domain"
+description = "会暴露客户端 IP / 位置 / DNS 出口的服务（DLC category-ip-geo-detect + 补充，不要直连）"
+sources = ["dlc:category-ip-geo-detect", "privacy_domain"]
+expect_min = 900
+
+# ---- 便利合集 ----
+
+[[ruleset]]
+name = "domain/proxy"
+type = "domain"
+description = "国外常用服务合集（gfw + 精选服务）。路由顺序：domain/gfw → domain/cn → domain/proxy"
+union = [
+  "domain/gfw",
+  "domain/service/google",
+  "domain/service/youtube",
+  "domain/service/netflix",
+  "domain/service/disney",
+  "domain/service/spotify",
+  "domain/service/telegram",
+  "domain/service/twitter",
+  "domain/service/ai",
+  "domain/service/github",
+  "domain/service/steam",
+  "domain/service/tiktok",
+  "domain/service/meta",
+  "domain/service/discord",
+  "domain/service/twitch",
+  "domain/service/reddit",
+  "domain/service/epicgames",
+  "domain/service/amazon",
+]
+expect_min = 3500
+
+
+# =============================== IP ===============================
+
+[[ruleset]]
+name = "ip/cn"
+type = "ip"
+description = "中国大陆 IP（BGP + 五个 RIR 登记 + DB-IP 地理归属，v4+v6）"
+sources = [
+  "china46",
+  "geo_cn:CN",
+  "rir_apnic:CN",
+  "rir_arin:CN",
+  "rir_ripe:CN",
+  "rir_lacnic:CN",
+  "rir_afrinic:CN",
+]
+expect_min = 7600
+
+[[ruleset]]
+name = "ip/cn4"
+type = "ip"
+description = "中国大陆 IPv4（BGP + RIR + 地理归属）"
+sources = [
+  "china4",
+  "geo_cn:CN",
+  "rir_apnic:CN",
+  "rir_arin:CN",
+  "rir_ripe:CN",
+  "rir_lacnic:CN",
+  "rir_afrinic:CN",
+]
+family = 4
+expect_min = 4300
+
+[[ruleset]]
+name = "ip/cn6"
+type = "ip"
+description = "中国大陆 IPv6（BGP + RIR + 地理归属）"
+sources = [
+  "china6",
+  "geo_cn:CN",
+  "rir_apnic:CN",
+  "rir_arin:CN",
+  "rir_ripe:CN",
+  "rir_lacnic:CN",
+  "rir_afrinic:CN",
+]
+family = 6
+expect_min = 3200
+
+[[ruleset]]
+name = "ip/private"
+type = "ip"
+description = "特殊用途与组播地址（IANA 特殊用途注册表中 Globally Reachable = False 的条目 + 组播固定段）"
+sources = ["iana_v4_special", "iana_v6_special", "iana_multicast"]
+expect_min = 15
+
+[[ruleset]]
+name = "ip/gfw"
+type = "ip"
+description = "gfwlist 中以 IP 形式出现的条目（数量很少，保留以求完整）"
+sources = ["gfwlist"]
+expect_min = 1
+
+# ---- 服务官方 IP 段 ----
+
+[[ruleset]]
+name = "ip/service/telegram"
+type = "ip"
+description = "Telegram 官方 CIDR（core.telegram.org）"
+sources = ["telegram_ip"]
+expect_min = 5
+
+[[ruleset]]
+name = "ip/service/cloudflare"
+type = "ip"
+description = "Cloudflare 官方 CIDR（注意：共享 Anycast，不等于 Cloudflare 自家业务）"
+sources = ["cloudflare_ip"]
+expect_min = 8
+
+[[ruleset]]
+name = "ip/service/google"
+type = "ip"
+description = "Google 自有服务 IP 段（goog.json，含 GFE / YouTube）"
+sources = ["google_ip"]
+expect_min = 50
+
+[[ruleset]]
+name = "ip/service/gcloud"
+type = "ip"
+description = "Google Cloud 客户可用 IP 段（cloud.json，与 google 分开）"
+sources = ["gcloud_ip"]
+expect_min = 250
+
+[[ruleset]]
+name = "ip/service/aws"
+type = "ip"
+description = "AWS CloudFront 边缘（官方 ip-ranges.json；全量 AWS 请改选择器）"
+sources = ["aws_ip:CLOUDFRONT"]
+expect_min = 100
+
+[[ruleset]]
+name = "ip/service/github"
+type = "ip"
+description = "GitHub 官方 meta（web/api/git/pages/packages/hooks/importer/shared_ingress）"
+sources = ["github_ip:web,api,git,pages,packages,hooks,importer,shared_ingress"]
+expect_min = 50
+
+[[ruleset]]
+name = "ip/service/netflix"
+type = "ip"
+description = "Netflix 前缀（AS2906 + AS40027，BGP 观测）"
+sources = ["bgp_v4:2906", "bgp_v6:2906", "bgp_v4:40027", "bgp_v6:40027"]
+expect_min = 100
+
+[[ruleset]]
+name = "ip/service/twitter"
+type = "ip"
+description = "X / Twitter 前缀（AS13414，BGP 观测）"
+sources = ["bgp_v4:13414", "bgp_v6:13414"]
+expect_min = 8
+
+[[ruleset]]
+name = "ip/service/steam"
+type = "ip"
+description = "Steam 前缀（AS32590，BGP 观测）"
+sources = ["bgp_v4:32590", "bgp_v6:32590"]
+expect_min = 18
+
+[[ruleset]]
+name = "ip/service/meta"
+type = "ip"
+description = "Meta / Facebook 前缀（AS32934，BGP 观测）"
+sources = ["bgp_v4:32934", "bgp_v6:32934"]
+expect_min = 15
+
+[[ruleset]]
+name = "ip/service/tiktok"
+type = "ip"
+description = "TikTok / ByteDance 前缀（AS396986，BGP 观测）"
+sources = ["bgp_v4:396986", "bgp_v6:396986"]
+expect_min = 80
+
+# ---- 中国运营商（多线 / 分运营商出口用） ----
+
+[[ruleset]]
+name = "ip/operator/telecom"
+type = "ip"
+description = "中国电信"
+sources = ["telecom"]
+expect_min = 1500
+
+[[ruleset]]
+name = "ip/operator/unicom"
+type = "ip"
+description = "中国联通"
+sources = ["unicom"]
+expect_min = 1200
+
+[[ruleset]]
+name = "ip/operator/mobile"
+type = "ip"
+description = "中国移动"
+sources = ["mobile"]
+expect_min = 500
+
+[[ruleset]]
+name = "ip/operator/cernet"
+type = "ip"
+description = "教育网"
+sources = ["cernet"]
+expect_min = 80

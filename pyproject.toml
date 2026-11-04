@@ -1,0 +1,24 @@
+[project]
+name = "geobuild"
+version = "0.1.0"
+description = "Build sing-box rule-sets (JSON + SRS) from authoritative upstream data"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.pyright]
+include = ["src", "tests"]
+extraPaths = ["src"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+reportAny = false
+reportUnknownParameterType = false
+reportMissingParameterType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+reportUnusedCallResult = false
+reportExplicitAny = false
+
+[tool.ruff.lint]
+# S310 (urllib URL audit) is enforced by the pi-lens semgrep runner, not ruff.
+external = ["S"]

@@ -1,0 +1,279 @@
+###############################################################################
+# 上游数据源
+#
+# 原则：官方/一手优先。IP 归属用 RIR 委派数据（5 个注册机构）与 DB-IP 地理库，
+# 实际路由用 BGP 观测数据，服务用厂商自己发布的网络范围。社区列表只用于
+# 域名/连通性判断，不参与 IP 归属（gfwlist 的 IP 条目单独进 ip/gfw）。
+#
+# 字段说明
+#   kind         解析器，见 src/geobuild/origins.py
+#   url          下载地址，{revision} 会被替换为解析出的 release tag / commit sha
+#   url_fallback 主地址不可用时使用的备用地址（{revision} 无法解析或下载失败）
+#   repo / ref   用于把构建钉在具体 commit/release 上
+#   revision     手动钉死版本，优先级最高
+#   expect_min   单次构建最少条目数（源级/规则集级），低于该值视为上游异常并中止
+#
+# 许可（详见 README "Data sources" 表）：
+#   RIR 委派数据 = 各注册机构公开数据（受各自条款约束）；IANA 注册表 = 公开数据
+#   iptoasn.com = Public Domain (PDDL v1.0)，可自由再分发
+#   DB-IP Lite = CC BY 4.0（需署名）
+#   DLC = MIT；gfwlist = LGPL-2.1；gaoyifan = MIT；dnsmasq-china-list = WTFPL v2
+#   厂商端点 = 厂商公开数据（受各自条款约束）
+###############################################################################
+
+[settings]
+# 仓库标识（owner/repo），用于生成 manifest / README 里的链接。
+# 留空即自动检测：$GITHUB_REPOSITORY → git remote origin → OWNER/REPO 占位。
+repository = ""
+# 缓存有效期（秒）；git 源在 revision 未变时复用缓存，不受 TTL 影响
+cache_ttl = 21600
+
+
+# ---------------------------------------------------------------------------
+# 域名
+# ---------------------------------------------------------------------------
+
+# v2fly/domain-list-community 是 geosite 的事实标准上游（社区维护，非官方认证）。
+# include 已展开，属性以规则尾部 `:@attr1,@attr2` 保留，由解析器识别。
+[sources.dlc]
+kind = "dlc"
+repo = "v2fly/domain-list-community"
+ref = "latest"
+url = "https://github.com/v2fly/domain-list-community/releases/download/{revision}/dlc.dat_plain.yml"
+url_fallback = "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat_plain.yml"
+expect_min = 1
+
+# 国内 DNS 解析加速表。上游判据是「NS 在中国大陆」或「国内 DNS 解析到大陆 IP」，
+# 不是「中国公司/中国服务器」。
+# 实测（300 条抽样，阿里 DNS）：有 A 记录的域名中约 80–85% 落在 ip/cn 内（按全部
+# 抽样计约 60%），对照组 DLC non-cn 约 0%。因此多数有应答的域名有国内接入点，
+# 用于直连判断是合适的近似；但部分条目只有 NS 在国内、服务器在境外，不能保证
+# 每条都可直连。它也不等于「中国公司」或「只在中国运营」。
+[sources.china_domain]
+kind = "dnsmasq_china"
+repo = "felixonmars/dnsmasq-china-list"
+ref = "master"
+url = "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/{revision}/accelerated-domains.china.conf"
+expect_min = 62000
+
+# gfwlist 是 GFW 域名列表的原始项目（AutoProxy 格式）。
+[sources.gfwlist]
+kind = "gfwlist"
+repo = "gfwlist/gfwlist"
+ref = "master"
+url = "https://raw.githubusercontent.com/gfwlist/gfwlist/{revision}/gfwlist.txt"
+expect_min = 2500
+
+
+# ---------------------------------------------------------------------------
+# 中国 IP：BGP 运营商分类（gaoyifan/china-operator-ip，MIT）
+# ---------------------------------------------------------------------------
+
+[sources.china46]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/china46.txt"
+expect_min = 5000
+
+[sources.china4]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/china.txt"
+expect_min = 3000
+
+[sources.china6]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/china6.txt"
+expect_min = 1500
+
+[sources.telecom]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/chinanet46.txt"
+expect_min = 1500
+
+[sources.unicom]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/unicom46.txt"
+expect_min = 1200
+
+[sources.mobile]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/cmcc46.txt"
+expect_min = 500
+
+[sources.cernet]
+kind = "cidr"
+repo = "gaoyifan/china-operator-ip"
+ref = "ip-lists"
+url = "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/{revision}/cernet46.txt"
+expect_min = 80
+
+
+# ---------------------------------------------------------------------------
+# RIR 委派数据（IP 登记归属，五个注册机构全覆盖）
+#
+# 注意：登记国家 ≠ IP 实际所在国家。这里作为「登记归属」的权威来源，
+# 与上面的 BGP 分类交叉验证。
+# ---------------------------------------------------------------------------
+
+[sources.rir_apnic]
+kind = "rir"
+url = "https://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest"
+expect_min = 3000
+
+[sources.rir_arin]
+kind = "rir"
+url = "https://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest"
+expect_min = 1
+
+[sources.rir_ripe]
+kind = "rir"
+url = "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest"
+expect_min = 10
+
+[sources.rir_lacnic]
+kind = "rir"
+url = "https://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-latest"
+# 该区域没有 CN 登记记录（实测为 0），保留端点以便未来自动纳入
+allow_empty = true
+expect_min = 1
+
+[sources.rir_afrinic]
+kind = "rir"
+url = "https://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-latest"
+# 该区域没有 CN 登记记录（实测为 0），保留端点以便未来自动纳入
+allow_empty = true
+expect_min = 1
+
+
+# ---------------------------------------------------------------------------
+# 地理位置/使用地（DB-IP Lite，CC BY 4.0）
+#
+# 与 RIR 登记、BGP 通告互补：登记只说「谁持有」，BGP 只说「有没有路由」，
+# 地理库说「实际在哪使用」（含跨国云、CDN、租赁段）。三方取并集。
+# 每月发布一个 CSV，文件名带年月；当月文件缺失时回落到上个月（会告警）。
+# ---------------------------------------------------------------------------
+
+[sources.geo_cn]
+kind = "dbip_country"
+url = "https://download.db-ip.com/free/dbip-country-lite-{year}-{month}.csv.gz"
+url_fallback = "https://download.db-ip.com/free/dbip-country-lite-{prev_year}-{prev_month}.csv.gz"
+expect_min = 9000
+
+
+# ---------------------------------------------------------------------------
+# IANA 特殊用途地址注册表
+# 只取 Globally Reachable = False 的条目；父块含可全球访问子块时整体丢弃。
+# ---------------------------------------------------------------------------
+
+[sources.iana_v4_special]
+kind = "iana_special"
+url = "https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry-1.csv"
+expect_min = 10
+
+[sources.iana_v6_special]
+kind = "iana_special"
+url = "https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry-1.csv"
+expect_min = 5
+
+
+# ---------------------------------------------------------------------------
+# BGP 前缀（ASN → 前缀），iptoasn.com：Public Domain (PDDL v1.0)
+# 每小时更新，覆盖完整 BGP 表；用于没有官方 IP 清单的服务。
+# ---------------------------------------------------------------------------
+
+# 组播地址段不在 special-purpose 注册表里，单独取自 IANA 组播地址空间注册表：
+# IPv4 224.0.0.0/4、IPv6 ff00::/8。只保留这两个聚合块，不引入社区清单。
+[sources.iana_multicast]
+kind = "static"
+entries = ["224.0.0.0/4", "ff00::/8"]
+expect_min = 2
+
+[sources.bgp_v4]
+kind = "ip2asn"
+url = "https://iptoasn.com/data/ip2asn-v4.tsv.gz"
+expect_min = 1
+
+[sources.bgp_v6]
+kind = "ip2asn"
+url = "https://iptoasn.com/data/ip2asn-v6.tsv.gz"
+expect_min = 1
+
+
+# ---------------------------------------------------------------------------
+# 服务官方发布的网络范围
+# ---------------------------------------------------------------------------
+
+[sources.telegram_ip]
+kind = "cidr"
+url = "https://core.telegram.org/resources/cidr.txt"
+expect_min = 5
+
+[sources.cloudflare_ip]
+kind = "cloudflare"
+url = "https://api.cloudflare.com/client/v4/ips"
+expect_min = 8
+
+# Google 自有服务（含 YouTube / Google Front End）
+[sources.google_ip]
+kind = "google_ipranges"
+url = "https://www.gstatic.com/ipranges/goog.json"
+expect_min = 50
+
+# Google Cloud 客户可用范围（goog.json 不含）
+[sources.gcloud_ip]
+kind = "google_ipranges"
+url = "https://www.gstatic.com/ipranges/cloud.json"
+expect_min = 50
+
+# AWS 公开范围；aws 文件不保证覆盖全部服务，按 service 过滤后再用
+[sources.aws_ip]
+kind = "aws_ipranges"
+url = "https://ip-ranges.amazonaws.com/ip-ranges.json"
+expect_min = 20
+
+# GitHub 官方 meta（web/api/git/pages/packages/hooks/importer/shared_ingress）
+[sources.github_ip]
+kind = "github_meta"
+url = "https://api.github.com/meta"
+expect_min = 30
+
+
+# ---------------------------------------------------------------------------
+# 本地固定集合
+# ---------------------------------------------------------------------------
+
+# 会暴露客户端真实位置的服务：IP 回显 / 地理查询 / DNS 泄漏检测 / 指纹检测。
+# 主清单用 DLC 的 category-ip-geo-detect（一手语义源，约 1,700 条）；
+# 这里只补 DLC 没有、但确实会泄漏出口 IP 的站点。
+# domain/cn 用 subtract 把它们排除，期望行为是走代理或 reject。
+[sources.privacy_domain]
+kind = "static"
+entries = [
+  # DNS / IP 泄漏检测（DLC category-ip-geo-detect 未收录）
+  "doileak.com",
+  "ipv6-test.com",
+  "whatleaks.com",
+]
+
+[sources.private_domain]
+kind = "static"
+entries = [
+  "localhost",
+  "localdomain",
+  "local",
+  "lan",
+  "home.arpa",
+  "in-addr.arpa",
+  "ip6.arpa",
+]
