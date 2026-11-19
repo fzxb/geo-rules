@@ -21,6 +21,7 @@ from geobuild.config import (
     load_config,
     select,
 )
+from geobuild.emit import write_ruleset
 from geobuild.origins import HANDLERS, Entry
 from geobuild.util import BuildError, month_placeholders
 
@@ -88,6 +89,27 @@ class OrderTest(unittest.TestCase):
         self.assertEqual(
             [ruleset.name for ruleset in build_order(rulesets)],
             ["domain/svc", "domain/gfw", "domain/cn"],
+        )
+
+    def test_intersect_dependencies_come_first(self):
+        rulesets = (
+            _ruleset("domain/global", intersect=("domain/a", "domain/b")),
+            _ruleset("domain/a"),
+            _ruleset("domain/b"),
+        )
+        self.assertEqual(
+            [ruleset.name for ruleset in build_order(rulesets)],
+            ["domain/a", "domain/b", "domain/global"],
+        )
+
+    def test_strict_subtract_dependencies_come_first(self):
+        rulesets = (
+            _ruleset("domain/cn", strict_subtract=("domain/gfw",)),
+            _ruleset("domain/gfw"),
+        )
+        self.assertEqual(
+            [ruleset.name for ruleset in build_order(rulesets)],
+            ["domain/gfw", "domain/cn"],
         )
 
     def test_cycle_is_rejected(self):
@@ -216,6 +238,187 @@ class AttributeFilterTest(unittest.TestCase):
         )
 
 
+class StrictSubtractBuildTest(unittest.TestCase):
+    """Strict subtraction must remove parents that cover a blocked entry."""
+
+    def test_parent_covering_a_blocked_domain_is_removed(self):
+        HANDLERS["_strict_cn"] = lambda ctx, src, selector: iter(
+            [
+                Entry("suffix", "example.com"),
+                Entry("suffix", "keep.example.org"),
+            ]
+        )
+        HANDLERS["_strict_gfw"] = lambda ctx, src, selector: iter(
+            [Entry("suffix", "blocked.example.com")]
+        )
+        try:
+            config = Config(
+                settings={},
+                sources={
+                    "cn": SourceConfig(name="cn", kind="_strict_cn"),
+                    "gfw": SourceConfig(name="gfw", kind="_strict_gfw"),
+                },
+                rulesets=(
+                    RulesetConfig(
+                        name="domain/gfw",
+                        type="domain",
+                        sources=("gfw",),
+                        expect_min=1,
+                    ),
+                    RulesetConfig(
+                        name="domain/cn",
+                        type="domain",
+                        sources=("cn",),
+                        strict_subtract=("domain/gfw",),
+                        expect_min=1,
+                    ),
+                ),
+            )
+            builder = Builder(config, fetcher=None)  # type: ignore[arg-type]
+            results = builder.build(list(config.rulesets))
+            cn = results["domain/cn"]
+            self.assertEqual(cn.rule, {"domain_suffix": ["keep.example.org"]})
+            self.assertTrue(
+                cn.domain_set is not None
+                and results["domain/gfw"].domain_set is not None
+                and cn.domain_set.is_disjoint(results["domain/gfw"].domain_set)
+            )
+            self.assertEqual(builder.checks[0]["count"], 0)
+        finally:
+            del HANDLERS["_strict_cn"]
+            del HANDLERS["_strict_gfw"]
+
+
+class IntersectBuildTest(unittest.TestCase):
+    def test_intersection_uses_the_more_specific_suffix(self):
+        HANDLERS["_intersect_a"] = lambda ctx, src, selector: iter(
+            [Entry("suffix", "example.com"), Entry("suffix", "keep.a")]
+        )
+        HANDLERS["_intersect_b"] = lambda ctx, src, selector: iter(
+            [Entry("suffix", "sub.example.com"), Entry("suffix", "only.b")]
+        )
+        try:
+            config = Config(
+                settings={},
+                sources={
+                    "a": SourceConfig(name="a", kind="_intersect_a"),
+                    "b": SourceConfig(name="b", kind="_intersect_b"),
+                },
+                rulesets=(
+                    RulesetConfig(
+                        name="domain/a", type="domain", sources=("a",), expect_min=1
+                    ),
+                    RulesetConfig(
+                        name="domain/b", type="domain", sources=("b",), expect_min=1
+                    ),
+                    RulesetConfig(
+                        name="domain/global",
+                        type="domain",
+                        intersect=("domain/a", "domain/b"),
+                        expect_min=1,
+                    ),
+                ),
+            )
+            builder = Builder(config, fetcher=None)  # type: ignore[arg-type]
+            results = builder.build(list(config.rulesets))
+            self.assertEqual(
+                results["domain/global"].rule,
+                {"domain_suffix": ["sub.example.com"]},
+            )
+        finally:
+            del HANDLERS["_intersect_a"]
+            del HANDLERS["_intersect_b"]
+
+    def test_sources_are_intersected_with_a_target(self):
+        HANDLERS["_intersect_a"] = lambda ctx, src, selector: iter(
+            [Entry("suffix", "example.com"), Entry("suffix", "keep.a")]
+        )
+        HANDLERS["_intersect_src"] = lambda ctx, src, selector: iter(
+            [Entry("suffix", "sub.example.com"), Entry("suffix", "only.src")]
+        )
+        try:
+            config = Config(
+                settings={},
+                sources={
+                    "a": SourceConfig(name="a", kind="_intersect_a"),
+                    "src": SourceConfig(name="src", kind="_intersect_src"),
+                },
+                rulesets=(
+                    RulesetConfig(
+                        name="domain/a", type="domain", sources=("a",), expect_min=1
+                    ),
+                    RulesetConfig(
+                        name="domain/global",
+                        type="domain",
+                        sources=("src",),
+                        intersect=("domain/a",),
+                        expect_min=1,
+                    ),
+                ),
+            )
+            builder = Builder(config, fetcher=None)  # type: ignore[arg-type]
+            results = builder.build(list(config.rulesets))
+            self.assertEqual(
+                results["domain/global"].rule,
+                {"domain_suffix": ["sub.example.com"]},
+            )
+        finally:
+            del HANDLERS["_intersect_a"]
+            del HANDLERS["_intersect_src"]
+
+
+class LogicalRuleTest(unittest.TestCase):
+    def test_exclude_emits_logical_rule_and_clears_check(self):
+        HANDLERS["_logical_cn"] = lambda ctx, src, selector: iter(
+            [Entry("suffix", "example.com")]
+        )
+        HANDLERS["_logical_gfw"] = lambda ctx, src, selector: iter(
+            [Entry("suffix", "blocked.example.com")]
+        )
+        try:
+            config = Config(
+                settings={},
+                sources={
+                    "cn": SourceConfig(name="cn", kind="_logical_cn"),
+                    "gfw": SourceConfig(name="gfw", kind="_logical_gfw"),
+                },
+                rulesets=(
+                    RulesetConfig(
+                        name="domain/gfw",
+                        type="domain",
+                        sources=("gfw",),
+                        expect_min=1,
+                    ),
+                    RulesetConfig(
+                        name="domain/cn",
+                        type="domain",
+                        sources=("cn",),
+                        exclude=("domain/gfw",),
+                        expect_min=1,
+                    ),
+                ),
+            )
+            builder = Builder(config, fetcher=None)  # type: ignore[arg-type]
+            results = builder.build(list(config.rulesets))
+            cn = results["domain/cn"]
+            self.assertEqual(
+                cn.exclusions.suffixes if cn.exclusions else set(),
+                {"blocked.example.com"},
+            )
+            self.assertEqual(builder.checks[0]["count"], 0)
+            with tempfile.TemporaryDirectory() as tmp:
+                path = write_ruleset(Path(tmp), cn)
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["rules"][0]["type"], "logical")
+            nested = payload["rules"][0]["rules"]
+            self.assertNotIn("invert", nested[0])
+            self.assertTrue(nested[1]["invert"])
+            self.assertEqual(nested[1]["domain_suffix"], ["blocked.example.com"])
+        finally:
+            del HANDLERS["_logical_cn"]
+            del HANDLERS["_logical_gfw"]
+
+
 class SafeOutputTest(unittest.TestCase):
     """--out is rmtree'd, so it must never point at the repo or its parents."""
 
@@ -234,6 +437,104 @@ class SafeOutputTest(unittest.TestCase):
     def test_accepts_a_plain_subdirectory(self):
         with tempfile.TemporaryDirectory() as tmp:
             assert_safe_output(Path(tmp) / "dist")
+
+
+class StrictSubtractConfigTest(unittest.TestCase):
+    def _load(self, extra: str = "") -> Config:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "sources.toml").write_text(
+                '[sources.x]\nkind = "static"\nentries = ["example.com"]\n',
+                encoding="utf-8",
+            )
+            (root / "rulesets.toml").write_text(
+                "[[ruleset]]\n"
+                'name = "domain/gfw"\n'
+                'type = "domain"\n'
+                'sources = ["x"]\n'
+                "\n"
+                "[[ruleset]]\n"
+                'name = "domain/cn"\n'
+                'type = "domain"\n'
+                'sources = ["x"]\n'
+                + extra,
+                encoding="utf-8",
+            )
+            return load_config(root)
+
+    def test_strict_target_is_parsed(self):
+        config = self._load('strict_subtract = ["domain/gfw"]\n')
+        cn = config.by_name()["domain/cn"]
+        self.assertEqual(cn.strict_subtract, ("domain/gfw",))
+        self.assertEqual(
+            [ruleset.name for ruleset in build_order(config.rulesets)],
+            ["domain/gfw", "domain/cn"],
+        )
+
+    def test_duplicate_subtract_and_strict_target_is_rejected(self):
+        with self.assertRaises(BuildError):
+            self._load(
+                'subtract = ["domain/gfw"]\n'
+                'strict_subtract = ["domain/gfw"]\n'
+            )
+
+
+class IntersectConfigTest(unittest.TestCase):
+    def _load(self, all_body: str, all_type: str = "domain") -> Config:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "sources.toml").write_text(
+                '[sources.x]\nkind = "static"\nentries = ["example.com"]\n',
+                encoding="utf-8",
+            )
+            (root / "rulesets.toml").write_text(
+                "[[ruleset]]\n"
+                'name = "domain/a"\n'
+                'type = "domain"\n'
+                'sources = ["x"]\n'
+                "\n"
+                "[[ruleset]]\n"
+                'name = "domain/b"\n'
+                'type = "domain"\n'
+                'sources = ["x"]\n'
+                "\n"
+                "[[ruleset]]\n"
+                'name = "domain/all"\n'
+                f'type = "{all_type}"\n'
+                + all_body,
+                encoding="utf-8",
+            )
+            return load_config(root)
+
+    def test_intersect_is_parsed_and_ordered(self):
+        config = self._load('intersect = ["domain/a", "domain/b"]\n')
+        all_rule = config.by_name()["domain/all"]
+        self.assertEqual(all_rule.intersect, ("domain/a", "domain/b"))
+        self.assertEqual(
+            [ruleset.name for ruleset in build_order(config.rulesets)],
+            ["domain/a", "domain/b", "domain/all"],
+        )
+
+    def test_intersect_can_combine_with_sources(self):
+        config = self._load(
+            'sources = ["x"]\n'
+            'intersect = ["domain/a"]\n'
+        )
+        self.assertEqual(
+            config.by_name()["domain/all"].intersect,
+            ("domain/a",),
+        )
+
+    def test_intersect_needs_two_targets(self):
+        with self.assertRaises(BuildError):
+            self._load('intersect = ["domain/a"]\n')
+
+    def test_intersect_is_domain_only(self):
+        with self.assertRaises(BuildError):
+            self._load(
+                'intersect = ["domain/a", "domain/b"]\n',
+                all_type="ip",
+            )
 
 
 class NameValidationTest(unittest.TestCase):

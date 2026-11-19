@@ -16,6 +16,7 @@ from __future__ import annotations
 import ipaddress
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 _LABEL_RE = re.compile(r"^[a-z0-9_-]{1,63}$")
@@ -79,6 +80,16 @@ def covered_by(domain: str, suffixes: set[str]) -> bool:
     return any(".".join(parts[index:]) in suffixes for index in range(1, len(parts)))
 
 
+def _ancestors(values: Iterable[str]) -> set[str]:
+    """All suffixes of ``values``, including the values themselves."""
+    result: set[str] = set()
+    for value in values:
+        parts = value.split(".")
+        for index in range(len(parts)):
+            result.add(".".join(parts[index:]))
+    return result
+
+
 @dataclass
 class DomainSet:
     suffixes: set[str] = field(default_factory=set)
@@ -129,6 +140,30 @@ class DomainSet:
             for sample in other.samples.get(reason, ()):
                 self._sample(reason, sample)
 
+    def intersect(self, other: DomainSet) -> DomainSet:
+        """Return the suffix/exact language common to both sets.
+
+        A suffix rule is closed under subdomains, so the intersection of
+        ``apple.com`` and ``a.apple.com`` is ``a.apple.com``; the intersection
+        of a suffix and an exact is the exact. ``domain_regex`` is ignored and
+        must be rejected by the caller.
+        """
+        result = DomainSet()
+        for suffix in self.suffixes:
+            if covered_by(suffix, other.suffixes):
+                result.suffixes.add(suffix)
+        for suffix in other.suffixes:
+            if covered_by(suffix, self.suffixes):
+                result.suffixes.add(suffix)
+        for exact in self.exacts:
+            if exact in other.exacts or covered_by(exact, other.suffixes):
+                result.exacts.add(exact)
+        for exact in other.exacts:
+            if exact in self.exacts or covered_by(exact, self.suffixes):
+                result.exacts.add(exact)
+        result.minimize()
+        return result
+
     def subtract(self, other: DomainSet) -> int:
         """Remove everything covered by ``other`` (used for cn minus gfw)."""
         before = len(self.suffixes) + len(self.exacts)
@@ -141,6 +176,48 @@ class DomainSet:
             if item not in other.exacts and not covered_by(item, other.suffixes)
         }
         return before - (len(self.suffixes) + len(self.exacts))
+
+    def strict_subtract(self, other: DomainSet) -> int:
+        """Remove every suffix/exact that could match ``other``.
+
+        Normal subtraction only drops entries covered by ``other``. A broad
+        suffix such as ``cn`` is not covered by ``bloomberg.cn``, but it still
+        matches it; a rule-set cannot express "cn minus this one host", so the
+        parent has to go. Apply this before :meth:`minimize` to keep explicit
+        children that do not overlap ``other``.
+
+        ``domain_regex`` entries are not considered: regex languages cannot be
+        subtracted from a suffix set reliably.
+        """
+        before = len(self.suffixes) + len(self.exacts)
+        self.suffixes = {
+            suffix for suffix in self.suffixes if not covered_by(suffix, other.suffixes)
+        }
+        self.exacts = {
+            item
+            for item in self.exacts
+            if item not in other.exacts and not covered_by(item, other.suffixes)
+        }
+        ancestors = _ancestors((*other.suffixes, *other.exacts))
+        self.suffixes = {suffix for suffix in self.suffixes if suffix not in ancestors}
+        # An exact entry only matches itself, so an exact parent of another
+        # exact (example.com vs sub.example.com) is not an overlap.
+        return before - (len(self.suffixes) + len(self.exacts))
+
+    def is_disjoint(self, other: DomainSet) -> bool:
+        """True when no suffix/exact entry of ``self`` can match ``other``.
+
+        This is the post-condition of :meth:`strict_subtract`; it deliberately
+        ignores ``domain_regex`` on both sides.
+        """
+        ancestors = _ancestors((*other.suffixes, *other.exacts))
+        for suffix in self.suffixes:
+            if covered_by(suffix, other.suffixes) or suffix in ancestors:
+                return False
+        for exact in self.exacts:
+            if exact in other.exacts or covered_by(exact, other.suffixes):
+                return False
+        return True
 
     def _reject(self, reason: str, value: str) -> None:
         self.rejects[reason] += 1

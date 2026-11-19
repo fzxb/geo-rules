@@ -141,7 +141,14 @@ def list_rulesets(args: argparse.Namespace) -> int:
     config = _load(args.config_dir)
     for ruleset in build_order(config.rulesets):
         inputs = ", ".join(
-            [*ruleset.sources, *(f"union:{name}" for name in ruleset.union)]
+            [
+                *ruleset.sources,
+                *(f"union:{name}" for name in ruleset.union),
+                *(f"intersect:{name}" for name in ruleset.intersect),
+                *(f"subtract:{name}" for name in ruleset.subtract),
+                *(f"strict:{name}" for name in ruleset.strict_subtract),
+                *(f"exclude:{name}" for name in ruleset.exclude),
+            ]
         )
         print(f"{ruleset.name:32s} {ruleset.type:6s} {inputs}")
     return 0

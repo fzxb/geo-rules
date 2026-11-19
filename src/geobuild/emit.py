@@ -17,7 +17,20 @@ DEFAULT_BRANCH = "rule-set"
 
 def write_ruleset(out_dir: Path, result: BuildResult) -> Path:
     path = out_dir / f"{result.config.name}.json"
-    write_json(path, {"version": SOURCE_VERSION, "rules": [result.rule]})
+    first_rule: dict[str, object] = {}
+    first_rule.update(result.rule)
+    rules: list[dict[str, object]] = [first_rule]
+    if result.exclusions is not None and result.exclusions.total:
+        exception: dict[str, object] = dict(result.exclusions.to_rule())
+        exception["invert"] = True
+        rules = [
+            {
+                "type": "logical",
+                "mode": "and",
+                "rules": [first_rule, exception],
+            }
+        ]
+    write_json(path, {"version": SOURCE_VERSION, "rules": rules})
     return path
 
 
@@ -69,6 +82,12 @@ def build_manifest(
             "entries": result.counts,
             "rejects": dict(sorted(result.rejects.items())),
             "subtracted": result.subtracted,
+            "excluded": (
+                result.exclusions.total if result.exclusions is not None else 0
+            ),
+            "logical": bool(
+                result.exclusions is not None and result.exclusions.total
+            ),
             "sources": result.sources,
             "files": files,
         }
@@ -156,10 +175,7 @@ def render_readme(manifest: dict, repository: str, branch: str = DEFAULT_BRANCH)
         "}",
         "```",
         "",
-        (
-            "`http_client` is required since sing-box 1.14; `format` may be omitted. "
-            "Match `gfw` before `cn` (~0.6% overlap via the bare `cn` TLD)."
-        ),
+        "`format` may be omitted for `.json`/`.srs` URLs.",
         "",
         "## Rule-sets",
         "",
@@ -198,6 +214,6 @@ def render_readme(manifest: dict, repository: str, branch: str = DEFAULT_BRANCH)
         revision = source["revision"] or "-"
         if len(revision) > 20:
             revision = revision[:12]
-        lines.append(f"| `{source['name']}` | {source['kind']} | `{revision}` |")
+        lines.append(f"| `{source['name']}` | `{source['kind']}` | `{revision}` |")
     lines.append("")
     return "\n".join(lines)

@@ -114,6 +114,89 @@ class DomainSetTest(unittest.TestCase):
         self.assertEqual(left.suffixes, {"example.com"})
         self.assertEqual(left.exacts, {"example.net"})
 
+    def test_intersect_takes_the_more_specific_suffix(self):
+        left = DomainSet()
+        left.add("example.com")
+        right = DomainSet()
+        right.add("sub.example.com")
+        result = left.intersect(right)
+        self.assertEqual(result.suffixes, {"sub.example.com"})
+
+    def test_intersect_suffix_with_exact_is_exact(self):
+        left = DomainSet()
+        left.add("example.com")
+        right = DomainSet()
+        right.add("www.example.com", kind="exact")
+        result = left.intersect(right)
+        self.assertEqual(result.suffixes, set())
+        self.assertEqual(result.exacts, {"www.example.com"})
+
+    def test_intersect_drops_unrelated_entries(self):
+        left = DomainSet()
+        left.add("example.com")
+        right = DomainSet()
+        right.add("example.net")
+        self.assertEqual(left.intersect(right).total, 0)
+
+    def test_intersect_keeps_matching_exacts(self):
+        left = DomainSet()
+        left.add("api.example.com", kind="exact")
+        right = DomainSet()
+        right.add("api.example.com", kind="exact")
+        right.add("example.net", kind="exact")
+        self.assertEqual(left.intersect(right).exacts, {"api.example.com"})
+
+    def test_strict_subtract_removes_a_parent_that_covers_the_target(self):
+        left = DomainSet()
+        for value in ("example.com", "keep.example.org"):
+            left.add(value)
+        blocked = DomainSet()
+        blocked.add("blocked.example.com")
+        self.assertEqual(left.strict_subtract(blocked), 1)
+        self.assertEqual(left.suffixes, {"keep.example.org"})
+        self.assertTrue(left.is_disjoint(blocked))
+
+    def test_strict_subtract_keeps_explicit_non_overlapping_children(self):
+        left = DomainSet()
+        left.add("cn")
+        left.add("keep.cn")
+        blocked = DomainSet()
+        blocked.add("blocked.cn")
+        _ = left.strict_subtract(blocked)
+        left.minimize()
+        self.assertEqual(left.suffixes, {"keep.cn"})
+        self.assertTrue(left.is_disjoint(blocked))
+
+    def test_strict_subtract_removes_entries_covered_by_target(self):
+        left = DomainSet()
+        left.add("a.example.com")
+        left.add("keep.example.org")
+        left.add("exact.example.com", kind="exact")
+        blocked = DomainSet()
+        blocked.add("example.com")
+        _ = left.strict_subtract(blocked)
+        self.assertEqual(left.suffixes, {"keep.example.org"})
+        self.assertEqual(left.exacts, set())
+        self.assertTrue(left.is_disjoint(blocked))
+
+    def test_strict_subtract_keeps_exact_parent_of_exact_child(self):
+        left = DomainSet()
+        left.add("example.com", kind="exact")
+        blocked = DomainSet()
+        blocked.add("sub.example.com", kind="exact")
+        self.assertEqual(left.strict_subtract(blocked), 0)
+        self.assertEqual(left.exacts, {"example.com"})
+        self.assertTrue(left.is_disjoint(blocked))
+
+    def test_strict_subtract_does_not_remove_unrelated_parents(self):
+        left = DomainSet()
+        left.add("cn")
+        blocked = DomainSet()
+        blocked.add("example.net")
+        self.assertEqual(left.strict_subtract(blocked), 0)
+        self.assertEqual(left.suffixes, {"cn"})
+        self.assertTrue(left.is_disjoint(blocked))
+
 
 if __name__ == "__main__":
     unittest.main()

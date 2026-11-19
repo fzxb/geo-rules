@@ -50,7 +50,10 @@ class RulesetConfig:
     description: str = ""
     sources: tuple[str, ...] = ()
     union: tuple[str, ...] = ()
+    intersect: tuple[str, ...] = ()
     subtract: tuple[str, ...] = ()
+    strict_subtract: tuple[str, ...] = ()
+    exclude: tuple[str, ...] = ()
     expect_min: int = 1
     family: str = "any"
     exclude_attrs: tuple[str, ...] = ()
@@ -58,7 +61,13 @@ class RulesetConfig:
 
     @property
     def dependencies(self) -> tuple[str, ...]:
-        return self.union + self.subtract
+        return (
+            self.union
+            + self.intersect
+            + self.subtract
+            + self.strict_subtract
+            + self.exclude
+        )
 
 
 @dataclass(frozen=True)
@@ -133,9 +142,21 @@ def _ruleset_from(raw: dict[str, Any]) -> RulesetConfig:
         raise BuildError(f"ruleset {name!r}: type must be one of {VALID_TYPES}")
     sources = tuple(str(item) for item in raw.get("sources", ()))
     union = tuple(str(item) for item in raw.get("union", ()))
+    intersect = tuple(str(item) for item in raw.get("intersect", ()))
     subtract = tuple(str(item) for item in raw.get("subtract", ()))
-    if not sources and not union:
-        raise BuildError(f"ruleset {name!r}: needs 'sources' and/or 'union'")
+    strict_subtract = tuple(str(item) for item in raw.get("strict_subtract", ()))
+    exclude = tuple(str(item) for item in raw.get("exclude", ()))
+    if intersect and not (sources or union) and len(intersect) < 2:
+        raise BuildError(
+            f"ruleset {name!r}: 'intersect' needs at least two targets "
+            "when it is the only input"
+        )
+    if intersect and type_ != "domain":
+        raise BuildError(f"ruleset {name!r}: 'intersect' is only supported for domains")
+    if not sources and not union and not intersect:
+        raise BuildError(
+            f"ruleset {name!r}: needs 'sources', 'union' or 'intersect'"
+        )
     family_raw = str(raw.get("family", "any")).lower().removeprefix("ipv")
     family = VALID_FAMILIES.get(family_raw)
     if family is None:
@@ -146,7 +167,10 @@ def _ruleset_from(raw: dict[str, Any]) -> RulesetConfig:
         description=str(raw.get("description", "")),
         sources=sources,
         union=union,
+        intersect=intersect,
         subtract=subtract,
+        strict_subtract=strict_subtract,
+        exclude=exclude,
         expect_min=int(raw.get("expect_min", 1)),
         family=family,
         exclude_attrs=tuple(
@@ -200,21 +224,60 @@ def load_config(config_dir: Path) -> Config:
                 raise BuildError(
                     f"ruleset {ruleset.name!r}: unknown union target {dep!r}"
                 )
+        for dep in ruleset.intersect:
+            if dep not in seen:
+                raise BuildError(
+                    f"ruleset {ruleset.name!r}: unknown intersect target {dep!r}"
+                )
+            if dep in ruleset.union or dep in ruleset.subtract:
+                raise BuildError(
+                    f"ruleset {ruleset.name!r}: {dep!r} is also in union/subtract"
+                )
+            if dep in ruleset.strict_subtract:
+                raise BuildError(
+                    f"ruleset {ruleset.name!r}: {dep!r} is also in strict_subtract"
+                )
         for dep in ruleset.subtract:
             if dep not in seen:
                 raise BuildError(
                     f"ruleset {ruleset.name!r}: unknown subtract target {dep!r}"
                 )
+        for dep in ruleset.strict_subtract:
+            if dep not in seen:
+                raise BuildError(
+                    f"ruleset {ruleset.name!r}: unknown strict_subtract target {dep!r}"
+                )
+            if dep in ruleset.subtract:
+                raise BuildError(
+                    f"ruleset {ruleset.name!r}: {dep!r} is in both "
+                    "subtract and strict_subtract"
+                )
+            if dep in ruleset.union:
+                raise BuildError(
+                    f"ruleset {ruleset.name!r}: {dep!r} cannot be both "
+                    "union and strict_subtract"
+                )
+            if dep in ruleset.intersect:
+                raise BuildError(
+                    f"ruleset {ruleset.name!r}: {dep!r} cannot be both "
+                    "intersect and strict_subtract"
+                )
+        for dep in ruleset.exclude:
+            if dep not in seen:
+                raise BuildError(
+                    f"ruleset {ruleset.name!r}: unknown exclude target {dep!r}"
+                )
         if ruleset.name in ruleset.dependencies:
             raise BuildError(
-                f"ruleset {ruleset.name!r}: cannot reference itself in union/subtract"
+                f"ruleset {ruleset.name!r}: cannot reference itself in "
+                "union/intersect/subtract/strict_subtract/exclude"
             )
 
     return Config(settings=settings, sources=sources, rulesets=rulesets)
 
 
 def build_order(rulesets: tuple[RulesetConfig, ...]) -> list[RulesetConfig]:
-    """Topological order over ``union`` / ``subtract`` dependencies."""
+    """Topological order over union/intersect/subtract/strict/exclude."""
     by_name = {ruleset.name: ruleset for ruleset in rulesets}
     state: dict[str, str] = {}
     order: list[RulesetConfig] = []
@@ -224,7 +287,7 @@ def build_order(rulesets: tuple[RulesetConfig, ...]) -> list[RulesetConfig]:
         if current == "done":
             return
         if current == "visiting":
-            raise BuildError("union cycle: " + " -> ".join([*stack, name]))
+            raise BuildError("dependency cycle: " + " -> ".join([*stack, name]))
         state[name] = "visiting"
         ruleset = by_name[name]
         for dep in ruleset.dependencies:
@@ -238,7 +301,7 @@ def build_order(rulesets: tuple[RulesetConfig, ...]) -> list[RulesetConfig]:
 
 
 def select(rulesets: tuple[RulesetConfig, ...], only: set[str]) -> list[RulesetConfig]:
-    """Keep the requested rulesets plus every transitive union dependency."""
+    """Keep requested rulesets plus every dependency."""
     by_name = {ruleset.name: ruleset for ruleset in rulesets}
     keep: set[str] = set()
 

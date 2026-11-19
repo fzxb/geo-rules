@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .config import Config, RulesetConfig, SourceConfig, split_ref
-from .domains import DomainSet, overlap
+from .domains import DomainSet, covered_by
 from .fetch import Fetcher
 from .ips import IPSet, parse_network
 from .origins import HANDLERS, Entry
@@ -25,6 +25,7 @@ class BuildResult:
     subtracted: int
     sources: list[str]
     domain_set: DomainSet | None = field(default=None, repr=False)
+    exclusions: DomainSet | None = field(default=None, repr=False)
     ip_set: IPSet | None = field(default=None, repr=False)
 
 
@@ -138,7 +139,23 @@ class Builder:
         gfw = self.results.get("domain/gfw")
         if cn is None or gfw is None or cn.domain_set is None or gfw.domain_set is None:
             return
-        hits = overlap(gfw.domain_set, cn.domain_set)
+        exclusions = cn.exclusions
+
+        def excluded_from_cn(value: str) -> bool:
+            return bool(
+                exclusions
+                and (
+                    covered_by(value, exclusions.suffixes)
+                    or value in exclusions.exacts
+                )
+            )
+
+        hits = [
+            suffix
+            for suffix in gfw.domain_set.suffixes
+            if covered_by(suffix, cn.domain_set.suffixes)
+            and not excluded_from_cn(suffix)
+        ]
         total = gfw.domain_set.total
         ratio = len(hits) / total if total else 0.0
         self.checks.append(
@@ -151,9 +168,8 @@ class Builder:
                 "samples": sorted(hits)[:10],
             }
         )
-        # domain/cn intentionally ships the bare "cn" TLD (DLC does too), so
-        # every blocked *.cn entry is "covered" by definition. What matters is
-        # that gfw is evaluated first; the threshold reflects that.
+        # domain/cn keeps broad parents, so the suffix overlap is filtered by
+        # its logical exclusions before this check is recorded.
         if ratio > 0.02:
             self.note(
                 f"domain/cn covers {len(hits)}/{total} gfw entries ({ratio:.1%}); "
@@ -210,6 +226,50 @@ class Builder:
                 ips.update(other.ip_set)
             used.append(dependency)
 
+        if ruleset.intersect:
+            if domains is None:
+                raise BuildError(
+                    f"{ruleset.name}: intersect is only supported for domain rule-sets"
+                )
+            if domains.regexes:
+                raise BuildError(
+                    f"{ruleset.name}: intersect does not support domain_regex "
+                    "in its own entries"
+                )
+
+            def intersect_target(dependency: str) -> DomainSet:
+                other = self.results.get(dependency)
+                if other is None:
+                    raise BuildError(
+                        f"{ruleset.name}: intersect target {dependency!r} "
+                        "was not built"
+                    )
+                if other.config.type != ruleset.type or other.domain_set is None:
+                    raise BuildError(
+                        f"{ruleset.name}: intersect target {dependency!r} is not "
+                        "a compatible domain rule-set"
+                    )
+                if other.domain_set.regexes:
+                    self.note(
+                        f"{ruleset.name}: intersect ignores "
+                        f"{len(other.domain_set.regexes)} domain_regex entries in "
+                        f"{dependency}",
+                        "warn",
+                    )
+                return other.domain_set
+
+            start = 0
+            if not ruleset.sources and not ruleset.union:
+                first = ruleset.intersect[0]
+                seeded = intersect_target(first)
+                domains.suffixes |= seeded.suffixes
+                domains.exacts |= seeded.exacts
+                used.append(f"intersect:{first}")
+                start = 1
+            for dependency in ruleset.intersect[start:]:
+                domains = domains.intersect(intersect_target(dependency))
+                used.append(f"intersect:{dependency}")
+
         removed = 0
         for dependency in ruleset.subtract:
             other = self.results.get(dependency)
@@ -228,9 +288,70 @@ class Builder:
                 removed += ips.subtract(other.ip_set)
             used.append(f"-{dependency}")
 
+        for dependency in ruleset.strict_subtract:
+            other = self.results.get(dependency)
+            if other is None:
+                raise BuildError(
+                    f"{ruleset.name}: strict_subtract target {dependency!r} "
+                    "was not built"
+                )
+            if other.config.type != ruleset.type:
+                raise BuildError(
+                    f"{ruleset.name}: strict_subtract target {dependency!r} is "
+                    f"{other.config.type}, expected {ruleset.type}"
+                )
+            if domains is None or other.domain_set is None:
+                raise BuildError(
+                    f"{ruleset.name}: strict_subtract is only supported for "
+                    "domain rule-sets"
+                )
+            removed += domains.strict_subtract(other.domain_set)
+            used.append(f"-{dependency} (strict)")
+            if not domains.is_disjoint(other.domain_set):
+                raise BuildError(
+                    f"{ruleset.name}: strict_subtract target {dependency!r} "
+                    "still overlaps after suffix subtraction"
+                )
+            if other.domain_set.regexes:
+                self.note(
+                    f"{ruleset.name}: strict_subtract does not cover "
+                    f"{len(other.domain_set.regexes)} domain_regex entries in "
+                    f"{dependency}; keep it matched first",
+                    "info",
+                )
+
+        exclusions: DomainSet | None = DomainSet() if domains is not None else None
+        for dependency in ruleset.exclude:
+            other = self.results.get(dependency)
+            if other is None:
+                raise BuildError(
+                    f"{ruleset.name}: exclude target {dependency!r} was not built"
+                )
+            if domains is None or other.domain_set is None:
+                raise BuildError(
+                    f"{ruleset.name}: exclude is only supported for domain rule-sets"
+                )
+            if other.config.type != ruleset.type:
+                raise BuildError(
+                    f"{ruleset.name}: exclude target {dependency!r} is "
+                    f"{other.config.type}, expected {ruleset.type}"
+                )
+            if other.domain_set.regexes:
+                self.note(
+                    f"{ruleset.name}: exclude ignores "
+                    f"{len(other.domain_set.regexes)} domain_regex entries in "
+                    f"{dependency}",
+                    "warn",
+                )
+            if exclusions is not None:
+                exclusions.update(domains.intersect(other.domain_set))
+            used.append(f"exclude:{dependency}")
+
         rejects: dict[str, int] = {}
         if domains is not None:
             domains.minimize()
+            if exclusions is not None:
+                exclusions.minimize()
             rule = domains.to_rule()
             rejects = dict(domains.rejects)
             total = domains.total
@@ -258,6 +379,7 @@ class Builder:
             subtracted=removed,
             sources=used,
             domain_set=domains,
+            exclusions=exclusions,
             ip_set=ips,
         )
 

@@ -100,14 +100,72 @@ def flatten(payload: dict) -> tuple[set[tuple[str, str]], list[str]]:
     rules = payload.get("rules")
     if not isinstance(rules, list):
         raise BuildError("rule-set JSON has no 'rules' list")
-    for rule in rules:
-        if not isinstance(rule, dict):
-            raise BuildError(f"unexpected rule entry: {rule!r}")
+
+    def walk(rule: dict) -> None:
+        if rule.get("type") == "logical":
+            nested = rule.get("rules")
+            if not isinstance(nested, list):
+                raise BuildError(f"logical rule without 'rules': {rule!r}")
+            for child in nested:
+                if not isinstance(child, dict):
+                    raise BuildError(f"unexpected logical rule: {child!r}")
+                walk(child)
+            return
         for key in ("domain", "domain_suffix", "domain_regex", "domain_keyword"):
             for value in _as_list(rule.get(key)):
                 domains.add((key, value))
         prefixes.extend(_as_list(rule.get("ip_cidr")))
+
+    for rule in rules:
+        if not isinstance(rule, dict):
+            raise BuildError(f"unexpected rule entry: {rule!r}")
+        walk(rule)
     return domains, prefixes
+
+
+def _has_logical(payload: dict) -> bool:
+    rules = payload.get("rules")
+    if not isinstance(rules, list):
+        return False
+
+    def walk(rule: dict) -> bool:
+        if rule.get("type") == "logical":
+            return True
+        nested = rule.get("rules")
+        if isinstance(nested, list):
+            return any(isinstance(child, dict) and walk(child) for child in nested)
+        return False
+
+    return any(isinstance(rule, dict) and walk(rule) for rule in rules)
+
+
+def _rule_structure(rule: dict) -> tuple:
+    if rule.get("type") == "logical":
+        nested = rule.get("rules")
+        if not isinstance(nested, list):
+            raise BuildError(f"logical rule without 'rules': {rule!r}")
+        return (
+            "logical",
+            str(rule.get("mode", "")),
+            bool(rule.get("invert", False)),
+            tuple(_rule_structure(child) for child in nested),
+        )
+    fields = []
+    for key, value in sorted(rule.items()):
+        if key in ("type", "invert"):
+            continue
+        if isinstance(value, list):
+            fields.append((key, tuple(sorted(str(item) for item in value))))
+        elif isinstance(value, (str, int, bool)):
+            fields.append((key, value))
+    return ("default", bool(rule.get("invert", False)), tuple(fields))
+
+
+def _payload_structure(payload: dict) -> tuple:
+    rules = payload.get("rules")
+    if not isinstance(rules, list):
+        raise BuildError("rule-set JSON has no 'rules' list")
+    return tuple(_rule_structure(rule) for rule in rules)
 
 
 def verify(source_json: Path, binary: Path, box: SingBox) -> None:
@@ -128,6 +186,13 @@ def verify(source_json: Path, binary: Path, box: SingBox) -> None:
 
     if canonical(source_prefixes) != canonical(compiled_prefixes):
         raise BuildError(f"{source_json.name}: ip_cidr round-trip mismatch")
+
+    if _has_logical(source) or _has_logical(compiled):
+        if _payload_structure(source) != _payload_structure(compiled):
+            raise BuildError(f"{source_json.name}: logical rule round-trip mismatch")
+        # Sample matching is intentionally skipped for logical rules: a sample
+        # can be inside the inverted exception set and legitimately not match.
+        return
 
     samples: list[str] = []
     for key, value in sorted(source_domains):

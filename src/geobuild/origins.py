@@ -178,7 +178,8 @@ def load_dlc(ctx: OriginContext, src: SourceConfig, selector: str) -> Iterator[E
             elif kind == "full":
                 yield Entry("exact", value, origin, frozenset(attrs))
             elif kind == "regexp":
-                ctx.dropped(origin, "regexp", value)
+                # Rulesets opt in via allow_regex; _add drops it otherwise.
+                yield Entry("regex", value, origin, frozenset(attrs))
             elif kind == "include":
                 raise BuildError(
                     f"dlc: list {list_name!r} still contains include directives"

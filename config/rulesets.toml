@@ -9,10 +9,14 @@
 [[ruleset]]
 name = "domain/cn"
 type = "domain"
-description = "中国大陆直连域名（DLC cn + @cn + 国内解析加速表，已扣除 gfw 与隐私探测服务）"
+description = "中国大陆直连域名（DLC cn + @cn + 国内解析加速表；保留 cn/top，含 @cn domain_regex，logical 反选 gfw 最小交集）"
 sources = ["dlc:cn", "dlc:*@cn", "china_domain"]
-# 被封锁/隐私域名不能进直连集合。
+# 只删除被 gfw 直接覆盖的条目；cn/top 等父后缀保留。
 subtract = ["domain/gfw", "domain/privacy"]
+# DLC 中带 @cn 的 regexp 也保留（当前唯一 8 条）。
+allow_regex = true
+# 在规则集内部用 logical AND NOT 排除 cn ∩ gfw 的 26 条最小交集。
+exclude = ["domain/gfw"]
 expect_min = 62000
 
 [[ruleset]]
@@ -39,11 +43,21 @@ sources = ["dlc:category-ads-all"]
 expect_min = 500
 
 [[ruleset]]
-name = "domain/non-cn"
+name = "domain/global"
 type = "domain"
-description = "非中国大陆域名（等价 geosite:geolocation-!cn，反选路由用）"
+description = "非中国大陆域名（DLC geolocation-!cn，已严格扣除 domain/cn-global 与 domain/cn）"
 sources = ["dlc:geolocation-!cn"]
+strict_subtract = ["domain/cn-global", "domain/cn"]
 expect_min = 15000
+
+[[ruleset]]
+name = "domain/cn-global"
+type = "domain"
+description = "国内与海外均提供服务的域名（domain/cn ∩ DLC geolocation-!cn，已排除 gfw）"
+sources = ["dlc:geolocation-!cn"]
+intersect = ["domain/cn"]
+strict_subtract = ["domain/gfw"]
+expect_min = 800
 
 # ---- 常用国外服务（可单独引用，也被 domain/proxy 合并） ----
 
@@ -69,6 +83,7 @@ type = "domain"
 description = "Netflix"
 sources = ["dlc:netflix"]
 exclude_attrs = ["cn"]
+allow_regex = true
 expect_min = 12
 
 [[ruleset]]
@@ -77,6 +92,7 @@ type = "domain"
 description = "Disney / Disney+"
 sources = ["dlc:disney"]
 exclude_attrs = ["cn"]
+allow_regex = true
 expect_min = 100
 
 [[ruleset]]
@@ -109,6 +125,7 @@ type = "domain"
 description = "AI 服务（OpenAI / Anthropic / Gemini 等，geosite:category-ai-!cn）"
 sources = ["dlc:category-ai-!cn"]
 exclude_attrs = ["cn"]
+allow_regex = true
 expect_min = 120
 
 [[ruleset]]
@@ -189,6 +206,7 @@ type = "domain"
 description = "Epic Games Store / Fortnite"
 sources = ["dlc:epicgames"]
 exclude_attrs = ["cn"]
+allow_regex = true
 expect_min = 15
 
 [[ruleset]]
@@ -212,6 +230,8 @@ expect_min = 900
 name = "domain/proxy"
 type = "domain"
 description = "国外常用服务合集（gfw + 精选服务）。路由顺序：domain/gfw → domain/cn → domain/proxy"
+# union 继承 gfw 和 service 的 domain_regex。
+allow_regex = true
 union = [
   "domain/gfw",
   "domain/service/google",

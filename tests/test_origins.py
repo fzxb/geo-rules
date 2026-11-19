@@ -125,6 +125,21 @@ lists:
             "only @cn entries, and ad lists must be skipped",
         )
 
+    def test_regexp_is_yielded_for_an_opt_in_consumer(self):
+        text = """\
+lists:
+  - name: "odd"
+    length: 1
+    rules:
+      - "regexp:^cdn[0-9]+[.]example[.]com$"
+"""
+        builder = FakeBuilder(text.encode("utf-8"))
+        entries = list(load_dlc(builder, _src("dlc", "dlc"), "odd"))
+        self.assertEqual(
+            [(entry.kind, entry.value) for entry in entries],
+            [("regex", "^cdn[0-9]+[.]example[.]com$")],
+        )
+
     def test_wildcard_requires_attribute(self):
         builder = FakeBuilder(b"lists:\n")
         with self.assertRaises(BuildError):
