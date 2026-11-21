@@ -18,6 +18,7 @@ import json
 import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from typing import Any, Protocol
 
 from .config import SourceConfig
@@ -593,6 +594,105 @@ def load_cidr(ctx: OriginContext, src: SourceConfig, _selector: str) -> Iterator
         yield Entry("cidr", token, origin)
 
 
+class _IanaNameParser(HTMLParser):
+    """Extract ``<record><name>`` values from the IANA XML registry.
+
+    ``HTMLParser`` is used deliberately instead of an XML parser: the project
+    is stdlib-only, and this parser does not resolve external entities or DTDs.
+    The registry is a trusted IANA document, but the build should still avoid
+    XML entity expansion.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.names: list[str] = []
+        self._in_record = False
+        self._in_name = False
+        self._name: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        del attrs
+        if tag == "record":
+            self._in_record = True
+        elif tag == "name" and self._in_record:
+            self._in_name = True
+            self._name = []
+
+    def handle_data(self, data: str) -> None:
+        if self._in_name:
+            self._name.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "name" and self._in_name:
+            self.names.append("".join(self._name).strip())
+            self._in_name = False
+        elif tag == "record":
+            self._in_record = False
+
+
+def load_iana_special_domains(
+    ctx: OriginContext, src: SourceConfig, _selector: str
+) -> Iterator[Entry]:
+    """Selected names from the IANA special-use domain registry.
+
+    IANA grants special-use status to the listed name *and its subdomains*,
+    so every selected name is emitted as a suffix. ``include`` is a required
+    allowlist: the registry also contains names such as ``alt`` and ``onion``
+    that are not private-network names.
+    """
+    raw = ctx.source_text(src)
+    parser = _IanaNameParser()
+    parser.feed(raw.decode("utf-8", "replace"))
+    parser.close()
+
+    include = src.options.get("include")
+    if not isinstance(include, list) or not include:
+        raise BuildError(f"{src.name}: 'include' must be a non-empty list")
+    wanted = {normalize_domain(str(item)) for item in include}
+
+    found: set[str] = set()
+    for raw_name in parser.names:
+        token = raw_name.strip().split()[0].rstrip(".")
+        if not token:
+            continue
+        try:
+            name = normalize_domain(token)
+        except InvalidDomain:
+            continue
+        if name in wanted:
+            found.add(name)
+
+    missing = sorted(wanted - found)
+    if missing:
+        raise BuildError(
+            f"{src.name}: IANA registry is missing {', '.join(missing)}"
+        )
+    for name in sorted(found):
+        yield Entry("suffix", name, src.name)
+
+
+def load_static_domains(
+    _ctx: OriginContext, src: SourceConfig, _selector: str
+) -> Iterator[Entry]:
+    """Explicit exact/suffix entries for a curated domain source."""
+    suffix_entries = src.options.get("suffix") or []
+    exact_entries = src.options.get("exact") or []
+    if not isinstance(suffix_entries, list) or not isinstance(exact_entries, list):
+        raise BuildError(
+            f"{src.name}: 'suffix' and 'exact' must both be lists"
+        )
+    if not suffix_entries and not exact_entries:
+        raise BuildError(f"{src.name}: needs 'suffix' and/or 'exact'")
+    for item in suffix_entries:
+        value = str(item).strip()
+        if value:
+            yield Entry("suffix", value, src.name)
+    for item in exact_entries:
+        value = str(item).strip()
+        if value:
+            yield Entry("exact", value, src.name)
+
+
 def load_static(
     _ctx: OriginContext, src: SourceConfig, _selector: str
 ) -> Iterator[Entry]:
@@ -792,6 +892,8 @@ def load_github_meta(
 HANDLERS = {
     "dbip_country": load_dbip_country,
     "dlc": load_dlc,
+    "iana_special_domains": load_iana_special_domains,
+    "static_domains": load_static_domains,
     "dnsmasq_china": load_dnsmasq_china,
     "gfwlist": load_gfwlist,
     "rir": load_rir,

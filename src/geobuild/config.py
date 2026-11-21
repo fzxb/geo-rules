@@ -99,7 +99,7 @@ def _source_from(name: str, raw: dict[str, Any]) -> SourceConfig:
     if not kind:
         raise BuildError(f"source {name!r}: missing 'kind'")
     url = raw.get("url") or ""
-    if not url and kind != "static":
+    if not url and kind not in ("static", "static_domains"):
         raise BuildError(f"source {name!r}: missing 'url'")
     known = {
         "kind",

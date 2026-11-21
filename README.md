@@ -20,6 +20,9 @@ counts are per rule-set, so layers overlap.
 | [gaoyifan/china-operator-ip](https://github.com/gaoyifan/china-operator-ip) | `ip/cn*` `ip/operator/*` (BGP) | MIT |
 | [iptoasn.com](https://iptoasn.com) | `ip/service/{netflix,twitter,steam,meta,tiktok}` (BGP) | PDDL v1.0 |
 | IANA special-purpose registries | `ip/private` | public data |
+| [IANA special-use domain names](https://www.iana.org/assignments/special-use-domain-names/special-use-domain-names.xml) | `domain/private` | public data |
+| ICANN private-use TLD `internal` | `domain/private` | public data |
+| Router vendor documentation | `domain/private` (exact hosts) | vendor terms |
 | Vendor endpoints (Telegram, Cloudflare, Google, GCloud, AWS, GitHub) | `ip/service/*` | public endpoints (vendor terms) |
 
 `domain/cn` means domestic DNS/NS presence, not "Chinese company" or "hosted in

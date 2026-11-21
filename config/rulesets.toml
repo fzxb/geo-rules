@@ -31,9 +31,10 @@ expect_min = 2500
 [[ruleset]]
 name = "domain/private"
 type = "domain"
-description = "内网 / 保留域名"
-sources = ["dlc:private", "private_domain"]
-expect_min = 20
+description = "内网 / 保留域名（IANA/RFC 保留名 + 精确路由器管理页）"
+sources = ["iana_private_names", "icann_reserved_names", "private_router"]
+expect_min = 16
+allow_regex = false
 
 [[ruleset]]
 name = "domain/ads"

@@ -144,6 +144,20 @@ kind = "iana_special"
 url = "https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry-1.csv"
 expect_min = 5
 
+# IANA special-use domain names；只取私有/保留名，alt/onion 等不进入 private。
+[sources.iana_private_names]
+kind = "iana_special_domains"
+url = "https://www.iana.org/assignments/special-use-domain-names/special-use-domain-names.xml"
+include = [
+  "local",
+  "localhost",
+  "home.arpa",
+  "invalid",
+  "test",
+  "example",
+]
+expect_min = 5
+
 
 # ---- BGP 前缀（iptoasn，PDDL v1.0；每小时更新） ----
 
@@ -214,14 +228,27 @@ entries = [
   "whatleaks.com",
 ]
 
-[sources.private_domain]
-kind = "static"
-entries = [
-  "localhost",
-  "localdomain",
-  "local",
-  "lan",
-  "home.arpa",
-  "in-addr.arpa",
-  "ip6.arpa",
+# ICANN 2024 私有网络保留 TLD。
+[sources.icann_reserved_names]
+kind = "static_domains"
+suffix = ["internal"]
+expect_min = 1
+
+# 路由器管理页：只允许 exact，避免厂商公开云服务被私有集合误命中。
+# 来源为各厂商官方文档；新增条目需附上文档 URL。
+[sources.private_router]
+kind = "static_domains"
+exact = [
+  "asusrouter.com",
+  "router.asus.com",
+  "www.asusrouter.com",
+  "routerlogin.com",
+  "www.routerlogin.com",
+  "miwifi.com",
+  "www.miwifi.com",
+  "tplogin.cn",
+  "oasisauth.h3c.com",
+  "instant.arubanetworks.com",
+  "setmeup.arubanetworks.com",
 ]
+expect_min = 8

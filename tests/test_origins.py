@@ -14,8 +14,10 @@ from geobuild.origins import (
     load_github_meta,
     load_google_ipranges,
     load_iana_special,
+    load_iana_special_domains,
     load_ip2asn,
     load_rir,
+    load_static_domains,
     parse_dlc_plain_yaml,
     split_dlc_rule,
 )
@@ -302,6 +304,58 @@ class GfwlistTest(unittest.TestCase):
         builder, entries = self._load(["|http://", "||example.com"])
         self.assertEqual([e.value for e in entries], ["example.com"])
         self.assertTrue(any(reason == "unparsable" for _, reason, _ in builder.drops))
+
+
+class IanaSpecialDomainsTest(unittest.TestCase):
+    XML = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<registry xmlns="http://www.iana.org/assignments">
+  <record><name>local.</name></record>
+  <record><name>home.arpa.</name></record>
+  <record><name>alt.</name></record>
+  <record><name>onion.</name></record>
+</registry>
+"""
+
+    def test_only_include_allowlist_is_emitted_as_suffix(self):
+        builder = FakeBuilder(self.XML.encode())
+        source = SourceConfig(
+            name="iana",
+            kind="iana_special_domains",
+            options={"include": ["local", "home.arpa"]},
+        )
+        entries = list(load_iana_special_domains(builder, source, ""))
+        self.assertEqual(
+            [(entry.kind, entry.value) for entry in entries],
+            [("suffix", "home.arpa"), ("suffix", "local")],
+        )
+
+    def test_missing_include_fails(self):
+        builder = FakeBuilder(self.XML.encode())
+        source = SourceConfig(
+            name="iana",
+            kind="iana_special_domains",
+            options={"include": ["internal"]},
+        )
+        with self.assertRaises(BuildError):
+            list(load_iana_special_domains(builder, source, ""))
+
+
+class StaticDomainsTest(unittest.TestCase):
+    def test_exact_and_suffix_are_distinct(self):
+        source = SourceConfig(
+            name="private",
+            kind="static_domains",
+            options={
+                "exact": ["router.example"],
+                "suffix": ["internal"],
+            },
+        )
+        entries = list(load_static_domains(FakeBuilder(), source, ""))
+        self.assertEqual(
+            [(entry.kind, entry.value) for entry in entries],
+            [("suffix", "internal"), ("exact", "router.example")],
+        )
 
 
 class DbipCountryTest(unittest.TestCase):
