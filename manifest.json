@@ -1,0 +1,1657 @@
+{
+  "schema": 2,
+  "generated_at": "2026-11-21T02:00:30Z",
+  "builder": {
+    "name": "geobuild",
+    "version": "0.1.0",
+    "sing_box": "1.14.4",
+    "source_version": 3
+  },
+  "stats": {
+    "rulesets": 47,
+    "bytes": 5941689,
+    "domains": 152168,
+    "ip_cidrs": 34551
+  },
+  "notes": [
+    "gfwlist: 31 @@ exceptions are narrower than their blocked suffix and stay proxied (rule-set has no negation)",
+    "gfwlist: 1 @@ wildcard exception(s) only cover subdomains; a rule-set cannot express that, so they stay proxied (tokenplus.app)",
+    "gfwlist: 4 subdomain wildcard block rule(s) are matched at host level, i.e. widened to the parent domain (pimg.tw, sf.net, tuzaijidi.com)",
+    "gfwlist: 29 URL-path block rule(s) are matched at host level (addons.mozilla.org, akademiye.org, bbs.cantonese.asia)",
+    "domain/cn: exclude ignores 9 domain_regex entries in domain/gfw",
+    "domain/cn-global: intersect ignores 8 domain_regex entries in domain/cn",
+    "domain/cn-global: strict_subtract does not cover 9 domain_regex entries in domain/gfw; keep it matched first",
+    "domain/global: strict_subtract does not cover 8 domain_regex entries in domain/cn; keep it matched first"
+  ],
+  "checks": [
+    {
+      "name": "gfw-covered-by-cn",
+      "rulesets": [
+        "domain/gfw",
+        "domain/cn"
+      ],
+      "count": 0,
+      "total": 4399,
+      "ratio": 0.0,
+      "samples": []
+    }
+  ],
+  "drops": {
+    "dlc:amazon: excluded @cn": 57,
+    "dlc:amazon: regex (not enabled for this rule-set)": 1,
+    "dlc:apple: excluded @cn": 302,
+    "dlc:category-ads-all: regex (not enabled for this rule-set)": 1,
+    "dlc:disney: excluded @cn": 1,
+    "dlc:epicgames: excluded @cn": 2,
+    "dlc:geolocation-!cn: regex (not enabled for this rule-set)": 316,
+    "dlc:google: excluded @cn": 126,
+    "dlc:microsoft: excluded @cn": 189,
+    "dlc:private: regex (not enabled for this rule-set)": 1,
+    "dlc:steam: excluded @cn": 17,
+    "dlc:youtube: excluded @cn": 1,
+    "geo_cn:CN: filtered: not IPv4": 7028,
+    "geo_cn:CN: filtered: not IPv6": 8161,
+    "gfwlist: @@ exception narrower than block": 31,
+    "gfwlist: cidr inside a domain rule-set": 1,
+    "gfwlist: regex domain inside an ip rule-set": 9,
+    "gfwlist: suffix domain inside an ip rule-set": 4419,
+    "gfwlist:allow: regexp": 1,
+    "rir_apnic:CN: filtered: not IPv4": 2047,
+    "rir_apnic:CN: filtered: not IPv6": 8798,
+    "rir_arin:CN: filtered: not IPv4": 1,
+    "rir_arin:CN: filtered: not IPv6": 1,
+    "rir_ripe:CN: filtered: not IPv4": 18,
+    "rir_ripe:CN: filtered: not IPv6": 17
+  },
+  "sources": [
+    {
+      "name": "aws_ip",
+      "kind": "aws_ipranges",
+      "url": "https://ip-ranges.amazonaws.com/ip-ranges.json",
+      "revision": null,
+      "sha256": "f6af5a9d075d0e9ef5558613d945e824fda33288c615361bb1713f6d781a8c6a",
+      "bytes": 2758291,
+      "fetched_at": "2026-11-21T02:00:18Z"
+    },
+    {
+      "name": "bgp_v4",
+      "kind": "ip2asn",
+      "url": "https://iptoasn.com/data/ip2asn-v4.tsv.gz",
+      "revision": null,
+      "sha256": "b881d19d4918552e5dca17ec0ee327d4b3873d629799063b575efb002c6dcd90",
+      "bytes": 8697031,
+      "fetched_at": "2026-11-21T02:00:18Z"
+    },
+    {
+      "name": "bgp_v6",
+      "kind": "ip2asn",
+      "url": "https://iptoasn.com/data/ip2asn-v6.tsv.gz",
+      "revision": null,
+      "sha256": "fcb95a83b58114873c87fdad6a92807c50818acc22df8b2c7a8bb00871907495",
+      "bytes": 2258661,
+      "fetched_at": "2026-11-21T02:00:19Z"
+    },
+    {
+      "name": "cernet",
+      "kind": "cidr",
+      "url": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/7e2773a184d01285feec0ab9cd6387533ede04c4/cernet46.txt",
+      "revision": "7e2773a184d01285feec0ab9cd6387533ede04c4",
+      "sha256": "5183917c73ae6520b6c72607fe452f5855de4149f4f34e137a3467e2b4227b72",
+      "bytes": 3019,
+      "fetched_at": "2026-11-21T02:00:21Z"
+    },
+    {
+      "name": "china4",
+      "kind": "cidr",
+      "url": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/7e2773a184d01285feec0ab9cd6387533ede04c4/china.txt",
+      "revision": "7e2773a184d01285feec0ab9cd6387533ede04c4",
+      "sha256": "b15db64cfffd2e195c10de7121ead535917081f89d5d2bae1960c88e54030dc7",
+      "bytes": 96806,
+      "fetched_at": "2026-11-21T02:00:14Z"
+    },
+    {
+      "name": "china46",
+      "kind": "cidr",
+      "url": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/7e2773a184d01285feec0ab9cd6387533ede04c4/china46.txt",
+      "revision": "7e2773a184d01285feec0ab9cd6387533ede04c4",
+      "sha256": "97349126e31542ea48de435d3c967a596869647df100202b42e6af86aa636ef0",
+      "bytes": 154140,
+      "fetched_at": "2026-11-21T02:00:00Z"
+    },
+    {
+      "name": "china6",
+      "kind": "cidr",
+      "url": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/7e2773a184d01285feec0ab9cd6387533ede04c4/china6.txt",
+      "revision": "7e2773a184d01285feec0ab9cd6387533ede04c4",
+      "sha256": "e63457ef3d101667007e50bb8aa8b08d73316f3b47c7bd4ec9ae108e36464ed6",
+      "bytes": 57334,
+      "fetched_at": "2026-11-21T02:00:15Z"
+    },
+    {
+      "name": "china_domain",
+      "kind": "dnsmasq_china",
+      "url": "https://raw.githubusercontent.com/felixonmars/dnsmasq-china-list/a30697b2725cbe2691312e12878ab3fea5697513/accelerated-domains.china.conf",
+      "revision": "a30697b2725cbe2691312e12878ab3fea5697513",
+      "sha256": "614aa9da0bc26c4d956778ffc0657ac21cfde87f869d5c2430d660d5dd1dbb59",
+      "bytes": 4013247,
+      "fetched_at": "2026-11-15T00:49:40Z"
+    },
+    {
+      "name": "cloudflare_ip",
+      "kind": "cloudflare",
+      "url": "https://api.cloudflare.com/client/v4/ips",
+      "revision": null,
+      "sha256": "f3d0a35768afd4a9a8307aa1033d50b9fa011b73836c9235c170aa31acac5efd",
+      "bytes": 505,
+      "fetched_at": "2026-11-21T02:00:17Z"
+    },
+    {
+      "name": "dlc",
+      "kind": "dlc",
+      "url": "https://github.com/v2fly/domain-list-community/releases/download/20261120151928/dlc.dat_plain.yml",
+      "revision": "20261120151928",
+      "sha256": "3a45cb1d47eb694b681ca27be83c4b20f20cf544d6820a85ccbd3a8dca8df5d9",
+      "bytes": 3761224,
+      "fetched_at": "2026-11-21T01:59:57Z"
+    },
+    {
+      "name": "gcloud_ip",
+      "kind": "google_ipranges",
+      "url": "https://www.gstatic.com/ipranges/cloud.json",
+      "revision": null,
+      "sha256": "c99dfa4a1f6a3836921b0d4e7af0551aeeb14d9aa4a35c132bd8b4f0da492c9e",
+      "bytes": 117975,
+      "fetched_at": "2026-11-21T02:00:17Z"
+    },
+    {
+      "name": "geo_cn",
+      "kind": "dbip_country",
+      "url": "https://download.db-ip.com/free/dbip-country-lite-2026-11.csv.gz",
+      "revision": null,
+      "sha256": "e5c8459d638a272ece7f4d7cfa49dce18d91b4f403f6940ba9249bf0db3781fd",
+      "bytes": 4623153,
+      "fetched_at": "2026-11-21T02:00:00Z"
+    },
+    {
+      "name": "gfwlist",
+      "kind": "gfwlist",
+      "url": "https://raw.githubusercontent.com/gfwlist/gfwlist/f09bc923be065731331b570faf51f5d5402847c4/gfwlist.txt",
+      "revision": "f09bc923be065731331b570faf51f5d5402847c4",
+      "sha256": "434830866c66529cdee1f5c025eefd966579daf3bb03a3af435c9a131ffa9789",
+      "bytes": 101173,
+      "fetched_at": "2026-11-21T01:59:57Z"
+    },
+    {
+      "name": "github_ip",
+      "kind": "github_meta",
+      "url": "https://api.github.com/meta",
+      "revision": null,
+      "sha256": "7d0a4bd24d3162d633874eff3d2baa16820a330392b0c36e004e00408e7f9983",
+      "bytes": 204918,
+      "fetched_at": "2026-11-21T02:00:18Z"
+    },
+    {
+      "name": "google_ip",
+      "kind": "google_ipranges",
+      "url": "https://www.gstatic.com/ipranges/goog.json",
+      "revision": null,
+      "sha256": "1707d0044ffe629a5a9c3623aa525214c2ffa11c874dde2ed161111741cd0ddd",
+      "bytes": 6315,
+      "fetched_at": "2026-11-21T02:00:17Z"
+    },
+    {
+      "name": "iana_v4_special",
+      "kind": "iana_special",
+      "url": "https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry-1.csv",
+      "revision": null,
+      "sha256": "cbc4b7653c8bc640ba1e8e5d4ebbf11e7c7a1d867e7f1593aad001d3f8632aac",
+      "bytes": 2445,
+      "fetched_at": "2026-11-21T02:00:17Z"
+    },
+    {
+      "name": "iana_v6_special",
+      "kind": "iana_special",
+      "url": "https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry-1.csv",
+      "revision": null,
+      "sha256": "bf56772aef97fbf9b4a27c98b8511f2bb1ba96da4b9ccc12ab203a2496faba66",
+      "bytes": 2300,
+      "fetched_at": "2026-11-21T02:00:17Z"
+    },
+    {
+      "name": "mobile",
+      "kind": "cidr",
+      "url": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/7e2773a184d01285feec0ab9cd6387533ede04c4/cmcc46.txt",
+      "revision": "7e2773a184d01285feec0ab9cd6387533ede04c4",
+      "sha256": "a50827b47f15ff47ab7acc8fc0f4f8a5a60fcf3bf71e4dfaa4a2074370926044",
+      "bytes": 19228,
+      "fetched_at": "2026-11-21T02:00:20Z"
+    },
+    {
+      "name": "rir_afrinic",
+      "kind": "rir",
+      "url": "https://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-latest",
+      "revision": null,
+      "sha256": "3bdfc6253ee878041f1cf094676a62ba2a7b5dd5be464e5eab9c28a0641ce33c",
+      "bytes": 495108,
+      "fetched_at": "2026-11-21T02:00:14Z"
+    },
+    {
+      "name": "rir_apnic",
+      "kind": "rir",
+      "url": "https://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest",
+      "revision": null,
+      "sha256": "ca1fbb1a83d3e55021771b471d16cabd259aa6d50962d58d265e661a658d2bf7",
+      "bytes": 4362610,
+      "fetched_at": "2026-11-21T02:00:03Z"
+    },
+    {
+      "name": "rir_arin",
+      "kind": "rir",
+      "url": "https://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest",
+      "revision": null,
+      "sha256": "594019f861632c98b42967aa43dda8318cfba4004758a6dba2a0deb07bdfee4f",
+      "bytes": 12929688,
+      "fetched_at": "2026-11-21T02:00:04Z"
+    },
+    {
+      "name": "rir_lacnic",
+      "kind": "rir",
+      "url": "https://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-latest",
+      "revision": null,
+      "sha256": "434d58f25fa9e478bb6a058174d95aa59fff65f648be5784b785a62b29bbc23e",
+      "bytes": 2326679,
+      "fetched_at": "2026-11-21T02:00:10Z"
+    },
+    {
+      "name": "rir_ripe",
+      "kind": "rir",
+      "url": "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
+      "revision": null,
+      "sha256": "7d2b694599d0500dfc1d41c32be6914869bd2a720452698ca17a126dd999855d",
+      "bytes": 8320618,
+      "fetched_at": "2026-11-21T02:00:06Z"
+    },
+    {
+      "name": "telecom",
+      "kind": "cidr",
+      "url": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/7e2773a184d01285feec0ab9cd6387533ede04c4/chinanet46.txt",
+      "revision": "7e2773a184d01285feec0ab9cd6387533ede04c4",
+      "sha256": "255a3bef561ce2e0125e3bc858abaefb07ac007a4f1cb67aefb5b8870bfe9c24",
+      "bytes": 52466,
+      "fetched_at": "2026-11-21T02:00:20Z"
+    },
+    {
+      "name": "telegram_ip",
+      "kind": "cidr",
+      "url": "https://core.telegram.org/resources/cidr.txt",
+      "revision": null,
+      "sha256": "3ecd072cedf72eceee6961b18a51e37f905d5ce4a656a5d24cf5fea63e6ec651",
+      "bytes": 227,
+      "fetched_at": "2026-11-21T02:00:17Z"
+    },
+    {
+      "name": "unicom",
+      "kind": "cidr",
+      "url": "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/7e2773a184d01285feec0ab9cd6387533ede04c4/unicom46.txt",
+      "revision": "7e2773a184d01285feec0ab9cd6387533ede04c4",
+      "sha256": "ad70fc83859c9b979259026169acd1d7e03a5e46723bfbee7e8cdcdf7d2c3cb0",
+      "bytes": 39639,
+      "fetched_at": "2026-11-21T02:00:20Z"
+    }
+  ],
+  "rulesets": {
+    "domain/gfw": {
+      "type": "domain",
+      "description": "GFW 污染的域名（gfwlist，已应用 @@ 白名单）",
+      "total": 4399,
+      "entries": {
+        "domain_suffix": 4390,
+        "domain_regex": 9
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "gfwlist"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/gfw.json",
+          "bytes": 107565,
+          "sha256": "619f26979b3af1a185ebaa40fa2db0a8a880d09cad2c1aaa3bd4ff2042e1ce69"
+        },
+        "srs": {
+          "path": "domain/gfw.srs",
+          "bytes": 28632,
+          "sha256": "24f9bdf83e973812b47c3f61004b2ea3859425a92c45cf728dae3f31a9adb58b"
+        }
+      }
+    },
+    "domain/privacy": {
+      "type": "domain",
+      "description": "会暴露客户端 IP / 位置 / DNS 出口的服务（DLC category-ip-geo-detect + 补充，不要直连）",
+      "total": 1685,
+      "entries": {
+        "domain": 105,
+        "domain_suffix": 1580
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:category-ip-geo-detect",
+        "privacy_domain"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/privacy.json",
+          "bytes": 39932,
+          "sha256": "65c3058e37e15da1cae5fb13d169674b39a96f6abc6775e7a5fe67fcb0f7d353"
+        },
+        "srs": {
+          "path": "domain/privacy.srs",
+          "bytes": 10867,
+          "sha256": "87c22145b3050435d82b7cf56479ea32aefdeb40b79916035cf1ce4529592e64"
+        }
+      }
+    },
+    "domain/cn": {
+      "type": "domain",
+      "description": "中国大陆直连域名（DLC cn + @cn + 国内解析加速表；保留 cn/top，含 @cn domain_regex，logical 反选 gfw 最小交集）",
+      "total": 110211,
+      "entries": {
+        "domain": 339,
+        "domain_suffix": 109864,
+        "domain_regex": 8
+      },
+      "rejects": {},
+      "subtracted": 168,
+      "excluded": 26,
+      "logical": true,
+      "sources": [
+        "dlc:cn",
+        "dlc:*@cn",
+        "china_domain",
+        "-domain/gfw",
+        "-domain/privacy",
+        "exclude:domain/gfw"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/cn.json",
+          "bytes": 3048632,
+          "sha256": "e3dbd62bada17c3b30e9e9bd54291d1ce96a808ed7f37e992b05c4b7b95e8af4"
+        },
+        "srs": {
+          "path": "domain/cn.srs",
+          "bytes": 438739,
+          "sha256": "3036f03b8d5a088f4f83d901db1f6b91cd04e0d4ecf2347c957a8f2a58c7ad24"
+        }
+      }
+    },
+    "domain/private": {
+      "type": "domain",
+      "description": "内网 / 保留域名",
+      "total": 39,
+      "entries": {
+        "domain": 14,
+        "domain_suffix": 25
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:private",
+        "private_domain"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/private.json",
+          "bytes": 1093,
+          "sha256": "5db7b57b54c85395b64100d1de7f1dc84ada6c233da06ab0a3ff37547e627277"
+        },
+        "srs": {
+          "path": "domain/private.srs",
+          "bytes": 427,
+          "sha256": "db1abc82443348a30cde6ac8cf5f1bfbaae1488f2a5d4f3453d352ab642dba73"
+        }
+      }
+    },
+    "domain/ads": {
+      "type": "domain",
+      "description": "广告域名（等价 geosite:category-ads-all）",
+      "total": 905,
+      "entries": {
+        "domain": 155,
+        "domain_suffix": 750
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:category-ads-all"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/ads.json",
+          "bytes": 25971,
+          "sha256": "c923a004df6f55c297428705b77d307184db5ac5a9cd249d7bc9e0898499dd61"
+        },
+        "srs": {
+          "path": "domain/ads.srs",
+          "bytes": 7328,
+          "sha256": "a4e2fe37d3189d87fa50ef40cf0ecdc332fcb210b1959e9fd383a068e4dc9043"
+        }
+      }
+    },
+    "domain/cn-global": {
+      "type": "domain",
+      "description": "国内与海外均提供服务的域名（domain/cn ∩ DLC geolocation-!cn，已排除 gfw）",
+      "total": 1226,
+      "entries": {
+        "domain": 357,
+        "domain_suffix": 869
+      },
+      "rejects": {},
+      "subtracted": 4,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:geolocation-!cn",
+        "intersect:domain/cn",
+        "-domain/gfw (strict)"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/cn-global.json",
+          "bytes": 36665,
+          "sha256": "838a924be91419b448acb9800d16ef2a9bd1b41e1f42bf676c7188261e08e9f1"
+        },
+        "srs": {
+          "path": "domain/cn-global.srs",
+          "bytes": 9825,
+          "sha256": "74a229ab2a267c83ffb3a3ec24c67324d30236f38eba619c5739f9ad7745b6c8"
+        }
+      }
+    },
+    "domain/global": {
+      "type": "domain",
+      "description": "非中国大陆域名（DLC geolocation-!cn，已严格扣除 domain/cn-global 与 domain/cn）",
+      "total": 23298,
+      "entries": {
+        "domain": 97,
+        "domain_suffix": 23201
+      },
+      "rejects": {},
+      "subtracted": 1341,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:geolocation-!cn",
+        "-domain/cn-global (strict)",
+        "-domain/cn (strict)"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/global.json",
+          "bytes": 597502,
+          "sha256": "c8151ff1228976858595d0fb404164c3eafb0bf247bbbee49147af4225b35740"
+        },
+        "srs": {
+          "path": "domain/global.srs",
+          "bytes": 141546,
+          "sha256": "71772fb4ba7e78cecebda421be59a277f1df7f5c0f862d077f175a884d66392a"
+        }
+      }
+    },
+    "domain/service/google": {
+      "type": "domain",
+      "description": "Google（含 gstatic / recaptcha）",
+      "total": 819,
+      "entries": {
+        "domain": 1,
+        "domain_suffix": 818
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:google"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/google.json",
+          "bytes": 20117,
+          "sha256": "135fc88af0a020b3807daca0e3aade5720ca987f21803c89ae34584024d116a9"
+        },
+        "srs": {
+          "path": "domain/service/google.srs",
+          "bytes": 5976,
+          "sha256": "aec1a09099c9323128d3d35d5e018853faa15b3d295731f68b810c5754f3fc43"
+        }
+      }
+    },
+    "domain/service/youtube": {
+      "type": "domain",
+      "description": "YouTube",
+      "total": 176,
+      "entries": {
+        "domain": 1,
+        "domain_suffix": 175
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:youtube"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/youtube.json",
+          "bytes": 4408,
+          "sha256": "c222c301ac2994815d04d9ad09e76bf5ed2a08073848ad9f7d525fbadfef3de7"
+        },
+        "srs": {
+          "path": "domain/service/youtube.srs",
+          "bytes": 1134,
+          "sha256": "be2793e860c016a7e077456470076e8ceb7273df2dbfb7ba0b9b0093049351d7"
+        }
+      }
+    },
+    "domain/service/netflix": {
+      "type": "domain",
+      "description": "Netflix",
+      "total": 28,
+      "entries": {
+        "domain_suffix": 24,
+        "domain_regex": 4
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:netflix"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/netflix.json",
+          "bytes": 1040,
+          "sha256": "baf689eabb07eeb7f098c9cf50e4a155214b24e26f28dd1ebd22a3d81b396b71"
+        },
+        "srs": {
+          "path": "domain/service/netflix.srs",
+          "bytes": 344,
+          "sha256": "e0691de1344e2715ffc323412b820b7d877fd493cec929fb18cf1256cf9479b7"
+        }
+      }
+    },
+    "domain/service/disney": {
+      "type": "domain",
+      "description": "Disney / Disney+",
+      "total": 222,
+      "entries": {
+        "domain": 4,
+        "domain_suffix": 217,
+        "domain_regex": 1
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:disney"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/disney.json",
+          "bytes": 6217,
+          "sha256": "3f566a95e9e6ac61969f9c5886be303ae727674c9b9fe94d2246df66f0594b20"
+        },
+        "srs": {
+          "path": "domain/service/disney.srs",
+          "bytes": 2235,
+          "sha256": "2ceeba9c4333d38bd76f0c25971f897155290da37013eb23f6bcc137b008d22f"
+        }
+      }
+    },
+    "domain/service/spotify": {
+      "type": "domain",
+      "description": "Spotify",
+      "total": 25,
+      "entries": {
+        "domain": 7,
+        "domain_suffix": 18
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:spotify"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/spotify.json",
+          "bytes": 897,
+          "sha256": "537869311d57839b03c3cea8f475bea7b06a1b7b4726f19822bbde30c84a5f20"
+        },
+        "srs": {
+          "path": "domain/service/spotify.srs",
+          "bytes": 361,
+          "sha256": "fcb8b834c10d830fc86423d6771370d7304396580db276635632f30504ac14f9"
+        }
+      }
+    },
+    "domain/service/telegram": {
+      "type": "domain",
+      "description": "Telegram",
+      "total": 21,
+      "entries": {
+        "domain_suffix": 21
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:telegram"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/telegram.json",
+          "bytes": 564,
+          "sha256": "ccf72cd85a09e8c4c0566b2bb2ae339ee55c3fd441e43c38a15fbbfa73de7d93"
+        },
+        "srs": {
+          "path": "domain/service/telegram.srs",
+          "bytes": 248,
+          "sha256": "30cd392b1d79b0569af077874b36c6892bf13a94dce0d8e4410c3b1976d62ea2"
+        }
+      }
+    },
+    "domain/service/twitter": {
+      "type": "domain",
+      "description": "X / Twitter",
+      "total": 24,
+      "entries": {
+        "domain_suffix": 24
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:twitter"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/twitter.json",
+          "bytes": 667,
+          "sha256": "3e60bce6294e1d69451f7f425c39836d0c76130b7e2cb883d0a6223f8d0a777d"
+        },
+        "srs": {
+          "path": "domain/service/twitter.srs",
+          "bytes": 284,
+          "sha256": "a2da69babdc2441e8ac487ddf91a5259e4628de74f44bb9bcd6a2113841bac0f"
+        }
+      }
+    },
+    "domain/service/ai": {
+      "type": "domain",
+      "description": "AI 服务（OpenAI / Anthropic / Gemini 等，geosite:category-ai-!cn）",
+      "total": 219,
+      "entries": {
+        "domain": 37,
+        "domain_suffix": 181,
+        "domain_regex": 1
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:category-ai-!cn"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/ai.json",
+          "bytes": 6500,
+          "sha256": "ac47b41cf29f8b3be11c955e47b38c2e4aec76e2ff57a6df475334befdd32d87"
+        },
+        "srs": {
+          "path": "domain/service/ai.srs",
+          "bytes": 2191,
+          "sha256": "9ad824651dd4c9e23a8c0b50e992b701a8f31bacbc668c83d6a1bf7ee5ebf910"
+        }
+      }
+    },
+    "domain/service/github": {
+      "type": "domain",
+      "description": "GitHub（含 raw / gist / pages）",
+      "total": 60,
+      "entries": {
+        "domain": 29,
+        "domain_suffix": 31
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:github"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/github.json",
+          "bytes": 2501,
+          "sha256": "2a6ced32d51856492f20c2cecc9263f5c3b3e545e9774d2b85a46d90531d01f0"
+        },
+        "srs": {
+          "path": "domain/service/github.srs",
+          "bytes": 727,
+          "sha256": "1820491048e4e1affb2630ee37ba2f9fd8af476bd9ff291e0fd60724490423c9"
+        }
+      }
+    },
+    "domain/service/apple": {
+      "type": "domain",
+      "description": "Apple（已排除 DLC 标记 @cn 的国内节点，那部分在 domain/cn）",
+      "total": 1355,
+      "entries": {
+        "domain": 10,
+        "domain_suffix": 1345
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:apple"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/apple.json",
+          "bytes": 39460,
+          "sha256": "8b5c51b23977b32ba0fefafdd2f46c63a40d42334233322d95c97918937aee5a"
+        },
+        "srs": {
+          "path": "domain/service/apple.srs",
+          "bytes": 12486,
+          "sha256": "22a726cba93af44f74a8438a6d3890a4517c140af4eda5217838111ba8a5e2cb"
+        }
+      }
+    },
+    "domain/service/microsoft": {
+      "type": "domain",
+      "description": "Microsoft（已排除 @cn 国内节点）",
+      "total": 511,
+      "entries": {
+        "domain": 16,
+        "domain_suffix": 495
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:microsoft"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/microsoft.json",
+          "bytes": 14266,
+          "sha256": "18f672d085444178c2a17d0c2e1858a067eb2ca814c267e225e59014f00ca7f5"
+        },
+        "srs": {
+          "path": "domain/service/microsoft.srs",
+          "bytes": 4875,
+          "sha256": "346944f7eb0d8eedeec6b83a42e8551bd01a103f880c75a632fc3b8d08936fda"
+        }
+      }
+    },
+    "domain/service/steam": {
+      "type": "domain",
+      "description": "Steam（已排除 @cn 国内节点）",
+      "total": 44,
+      "entries": {
+        "domain": 16,
+        "domain_suffix": 28
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:steam"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/steam.json",
+          "bytes": 1555,
+          "sha256": "5730cb8b0574ad5f9d31e02e2b46a6e2b180f18060685d90e4bf5981d5aa8802"
+        },
+        "srs": {
+          "path": "domain/service/steam.srs",
+          "bytes": 611,
+          "sha256": "4746ecfb7acd22fa532a8197138085c4e5b2cc80a2996b2c30a91d896be5173d"
+        }
+      }
+    },
+    "domain/service/tiktok": {
+      "type": "domain",
+      "description": "TikTok / ByteDance",
+      "total": 39,
+      "entries": {
+        "domain": 6,
+        "domain_suffix": 33
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:tiktok"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/tiktok.json",
+          "bytes": 1275,
+          "sha256": "328d35a720f9eebc8af5902ef42b4213449d04862c6752b27bd50b145b7af6a0"
+        },
+        "srs": {
+          "path": "domain/service/tiktok.srs",
+          "bytes": 482,
+          "sha256": "03a1f2d572f146c70dadaf5721b792843f8f5acaa7d5670015ec0364796c9ea6"
+        }
+      }
+    },
+    "domain/service/meta": {
+      "type": "domain",
+      "description": "Meta（Facebook / Instagram / WhatsApp）",
+      "total": 478,
+      "entries": {
+        "domain": 1,
+        "domain_suffix": 477
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:facebook",
+        "dlc:instagram",
+        "dlc:whatsapp"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/meta.json",
+          "bytes": 13070,
+          "sha256": "bf3a2ba7ef55de33366e003714980d3d8f9fe2aaca76599d473dd792178a143c"
+        },
+        "srs": {
+          "path": "domain/service/meta.srs",
+          "bytes": 3748,
+          "sha256": "d95d2ff50cd22c1e4c00b22d5ab43cd6eb3363b32d905cb2240c423a6bb55923"
+        }
+      }
+    },
+    "domain/service/discord": {
+      "type": "domain",
+      "description": "Discord",
+      "total": 28,
+      "entries": {
+        "domain": 2,
+        "domain_suffix": 26
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:discord"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/discord.json",
+          "bytes": 906,
+          "sha256": "dd472e9ef6c1e7456aa7fbbbae0a457b95df5ca1b176d26a1fa25beadfc34fe3"
+        },
+        "srs": {
+          "path": "domain/service/discord.srs",
+          "bytes": 408,
+          "sha256": "289c98b6887f4de780670618deed0613c2cd489818b2c8abd1ee9d12bb972734"
+        }
+      }
+    },
+    "domain/service/twitch": {
+      "type": "domain",
+      "description": "Twitch",
+      "total": 35,
+      "entries": {
+        "domain": 27,
+        "domain_suffix": 8
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:twitch"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/twitch.json",
+          "bytes": 1395,
+          "sha256": "c9f220dfa00bca2602163dd8e519fd492f487810ddb3872967f670019d0e7eba"
+        },
+        "srs": {
+          "path": "domain/service/twitch.srs",
+          "bytes": 438,
+          "sha256": "de69ef16d0822eff79b7a1ac2d4b66cbf72646797dfbdb6a7314d796b1d7e805"
+        }
+      }
+    },
+    "domain/service/reddit": {
+      "type": "domain",
+      "description": "Reddit",
+      "total": 12,
+      "entries": {
+        "domain_suffix": 12
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:reddit"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/reddit.json",
+          "bytes": 395,
+          "sha256": "88d3193a2dceb9d24b899f7570ea131e37b822e26f425f9e4832462db9109a59"
+        },
+        "srs": {
+          "path": "domain/service/reddit.srs",
+          "bytes": 181,
+          "sha256": "4677ea3324d082ca9a47c2bae79f27f04fdf008e1a5946ec6a4485887559b521"
+        }
+      }
+    },
+    "domain/service/epicgames": {
+      "type": "domain",
+      "description": "Epic Games Store / Fortnite",
+      "total": 31,
+      "entries": {
+        "domain_suffix": 30,
+        "domain_regex": 1
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:epicgames"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/epicgames.json",
+          "bytes": 966,
+          "sha256": "a601b31f26f49486cee6f530ccdd0bbeb37e42284a8ecb83525f9b0e4981aa9d"
+        },
+        "srs": {
+          "path": "domain/service/epicgames.srs",
+          "bytes": 405,
+          "sha256": "e65c87745721bdcf26c8a3958cff98c575fab2d77e6ea3a5bca33cd571b53350"
+        }
+      }
+    },
+    "domain/service/amazon": {
+      "type": "domain",
+      "description": "Amazon 购物（不含 AWS，AWS 见 ip/service/aws）",
+      "total": 182,
+      "entries": {
+        "domain_suffix": 182
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "dlc:amazon"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/service/amazon.json",
+          "bytes": 4828,
+          "sha256": "9a24ab4dcd56abb42d493bb8bca64453cd4928d3948c5899d5c2297f9df442e3"
+        },
+        "srs": {
+          "path": "domain/service/amazon.srs",
+          "bytes": 1691,
+          "sha256": "6b147272e030b9ac2c5cfd9217b7a0a50518063f25d7241c0a3826d380e81057"
+        }
+      }
+    },
+    "domain/proxy": {
+      "type": "domain",
+      "description": "国外常用服务合集（gfw + 精选服务）。路由顺序：domain/gfw → domain/cn → domain/proxy",
+      "total": 6136,
+      "entries": {
+        "domain": 73,
+        "domain_suffix": 6047,
+        "domain_regex": 16
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "domain/gfw",
+        "domain/service/google",
+        "domain/service/youtube",
+        "domain/service/netflix",
+        "domain/service/disney",
+        "domain/service/spotify",
+        "domain/service/telegram",
+        "domain/service/twitter",
+        "domain/service/ai",
+        "domain/service/github",
+        "domain/service/steam",
+        "domain/service/tiktok",
+        "domain/service/meta",
+        "domain/service/discord",
+        "domain/service/twitch",
+        "domain/service/reddit",
+        "domain/service/epicgames",
+        "domain/service/amazon"
+      ],
+      "files": {
+        "json": {
+          "path": "domain/proxy.json",
+          "bytes": 154807,
+          "sha256": "c0971efe4e3364735e8932bebf0ee9851b3dc9e811e11562787ecc880b04418a"
+        },
+        "srs": {
+          "path": "domain/proxy.srs",
+          "bytes": 40284,
+          "sha256": "82abaf9700d924b8fc555c099a7d89191303efdc043314e7d151ee80cdec7dc8"
+        }
+      }
+    },
+    "ip/cn": {
+      "type": "ip",
+      "description": "中国大陆 IP（BGP + 五个 RIR 登记 + DB-IP 地理归属，v4+v6）",
+      "total": 12947,
+      "entries": {
+        "ip_cidr": 12947
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "china46",
+        "geo_cn:CN",
+        "rir_apnic:CN",
+        "rir_arin:CN",
+        "rir_ripe:CN",
+        "rir_lacnic:CN",
+        "rir_afrinic:CN"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/cn.json",
+          "bytes": 356653,
+          "sha256": "0203f7163d9da68fccd70ae7e84bc39fcf78130bea7a472e9e59f9172914d0e7"
+        },
+        "srs": {
+          "path": "ip/cn.srs",
+          "bytes": 55119,
+          "sha256": "b7d1997d626af3067ade933c6325424bce8e919cc8d52133a4acbbe930d5e843"
+        }
+      }
+    },
+    "ip/cn4": {
+      "type": "ip",
+      "description": "中国大陆 IPv4（BGP + RIR + 地理归属）",
+      "total": 7427,
+      "entries": {
+        "ip_cidr": 7427
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "china4",
+        "geo_cn:CN",
+        "rir_apnic:CN",
+        "rir_arin:CN",
+        "rir_ripe:CN",
+        "rir_lacnic:CN",
+        "rir_afrinic:CN"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/cn4.json",
+          "bytes": 197852,
+          "sha256": "435d7d9d71b8eaa9fba7f869d4e1a551612cbc1c317bb660e7b89dd9193b1c46"
+        },
+        "srs": {
+          "path": "ip/cn4.srs",
+          "bytes": 27439,
+          "sha256": "1f58622869adcc9d60762d264e42b1e5d869e4dc5d56ed769c35f24276fc45d6"
+        }
+      }
+    },
+    "ip/cn6": {
+      "type": "ip",
+      "description": "中国大陆 IPv6（BGP + RIR + 地理归属）",
+      "total": 5520,
+      "entries": {
+        "ip_cidr": 5520
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "china6",
+        "geo_cn:CN",
+        "rir_apnic:CN",
+        "rir_arin:CN",
+        "rir_ripe:CN",
+        "rir_lacnic:CN",
+        "rir_afrinic:CN"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/cn6.json",
+          "bytes": 158876,
+          "sha256": "ce4aa15e45c04cbc94d5433bd86f541d59a078f2cf2d7c2af4e4f4ec080636ee"
+        },
+        "srs": {
+          "path": "ip/cn6.srs",
+          "bytes": 26382,
+          "sha256": "40527ebf1dfa1aa3bc7ad75b6ad73d80662b6a0b3d9bb6946d573b0ba091526d"
+        }
+      }
+    },
+    "ip/private": {
+      "type": "ip",
+      "description": "特殊用途与组播地址（IANA 特殊用途注册表中 Globally Reachable = False 的条目 + 组播固定段）",
+      "total": 27,
+      "entries": {
+        "ip_cidr": 27
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "iana_v4_special",
+        "iana_v6_special",
+        "iana_multicast"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/private.json",
+          "bytes": 712,
+          "sha256": "862819db91f4bfa9a658ee10ab644cb18e58551db5b93901e4a915d19c296a34"
+        },
+        "srs": {
+          "path": "ip/private.srs",
+          "bytes": 211,
+          "sha256": "6512c4a3422754938653e188a0f0719a3f0a2f65ba402dc7f7a7dff35943192e"
+        }
+      }
+    },
+    "ip/gfw": {
+      "type": "ip",
+      "description": "gfwlist 中以 IP 形式出现的条目（数量很少，保留以求完整）",
+      "total": 1,
+      "entries": {
+        "ip_cidr": 1
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "gfwlist"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/gfw.json",
+          "bytes": 101,
+          "sha256": "48c4d74ccbeb39b9ef06ec6d4a10a86e4de7f169ed879046b0f70b6ec92b5ba9"
+        },
+        "srs": {
+          "path": "ip/gfw.srs",
+          "bytes": 32,
+          "sha256": "738f5a0796d2cd14de8ceab86eefd0ce87be4d5399fa01a0c0bb3e2ae497c0ea"
+        }
+      }
+    },
+    "ip/service/telegram": {
+      "type": "ip",
+      "description": "Telegram 官方 CIDR（core.telegram.org）",
+      "total": 11,
+      "entries": {
+        "ip_cidr": 11
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "telegram_ip"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/telegram.json",
+          "bytes": 374,
+          "sha256": "b91ad816eb4fce0def77556dec9357b8c7d259a132f6d098294d5329e4b64d52"
+        },
+        "srs": {
+          "path": "ip/service/telegram.srs",
+          "bytes": 117,
+          "sha256": "95a0011cd94f862f0a4f8ae801d24b153bc632f97c80f73220a704ef09167217"
+        }
+      }
+    },
+    "ip/service/cloudflare": {
+      "type": "ip",
+      "description": "Cloudflare 官方 CIDR（注意：共享 Anycast，不等于 Cloudflare 自家业务）",
+      "total": 22,
+      "entries": {
+        "ip_cidr": 22
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "cloudflare_ip"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/cloudflare.json",
+          "bytes": 653,
+          "sha256": "b9d0a00bd5566f8738c8774a4d1e94906b28399b18f08b2774b1341964e761d9"
+        },
+        "srs": {
+          "path": "ip/service/cloudflare.srs",
+          "bytes": 221,
+          "sha256": "94b67131e0585d5c941361fb7b02f918404f99c327607f67bfd7090608cabc54"
+        }
+      }
+    },
+    "ip/service/google": {
+      "type": "ip",
+      "description": "Google 自有服务 IP 段（goog.json，含 GFE / YouTube）",
+      "total": 148,
+      "entries": {
+        "ip_cidr": 148
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "google_ip"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/google.json",
+          "bytes": 3923,
+          "sha256": "9528e275191ce23f57033fdb9bbcd2ca2938d6eea75f22e556488b32dc952cd6"
+        },
+        "srs": {
+          "path": "ip/service/google.srs",
+          "bytes": 851,
+          "sha256": "78e52dbb2ebc6c0ced64154797ef6880d58bcb76de638d8577be3d907ceb260b"
+        }
+      }
+    },
+    "ip/service/gcloud": {
+      "type": "ip",
+      "description": "Google Cloud 客户可用 IP 段（cloud.json，与 google 分开）",
+      "total": 495,
+      "entries": {
+        "ip_cidr": 495
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "gcloud_ip"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/gcloud.json",
+          "bytes": 13047,
+          "sha256": "f11f3a9d3ba4313a2d7634971a8a6ac838fc22339bdb38498f09e4af449216fe"
+        },
+        "srs": {
+          "path": "ip/service/gcloud.srs",
+          "bytes": 1104,
+          "sha256": "31617d61cacc52f3aff9b6c2aba65538c5dc1d163f0789de175f8fab1cc84d0c"
+        }
+      }
+    },
+    "ip/service/aws": {
+      "type": "ip",
+      "description": "AWS CloudFront 边缘（官方 ip-ranges.json；全量 AWS 请改选择器）",
+      "total": 217,
+      "entries": {
+        "ip_cidr": 217
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "aws_ip:CLOUDFRONT"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/aws.json",
+          "bytes": 5997,
+          "sha256": "5f158f12078055e6e64bc84e0ff98e8a40585c8dd562f0a3902487f326b16825"
+        },
+        "srs": {
+          "path": "ip/service/aws.srs",
+          "bytes": 1038,
+          "sha256": "7c41a9cd96094f2120fe9f0e2cf8f14cb6beeba3d71a2656748560d1c42cfbe9"
+        }
+      }
+    },
+    "ip/service/github": {
+      "type": "ip",
+      "description": "GitHub 官方 meta（web/api/git/pages/packages/hooks/importer/shared_ingress）",
+      "total": 149,
+      "entries": {
+        "ip_cidr": 149
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "github_ip:web,api,git,pages,packages,hooks,importer,shared_ingress"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/github.json",
+          "bytes": 4196,
+          "sha256": "52d3230741f8190f524b1e61dd74639c4be3c4b6d309075d4d170db1a002851f"
+        },
+        "srs": {
+          "path": "ip/service/github.srs",
+          "bytes": 685,
+          "sha256": "479564620a112a6e56a6ab90dd874eefbd668302acb27f791440c43e0025d28c"
+        }
+      }
+    },
+    "ip/service/netflix": {
+      "type": "ip",
+      "description": "Netflix 前缀（AS2906 + AS40027，BGP 观测）",
+      "total": 256,
+      "entries": {
+        "ip_cidr": 256
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "bgp_v4:2906",
+        "bgp_v6:2906",
+        "bgp_v4:40027",
+        "bgp_v6:40027"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/netflix.json",
+          "bytes": 7741,
+          "sha256": "7f81d13db9b951016d6622143f5e89330286e49e5e2555b0df26e42b297a57fa"
+        },
+        "srs": {
+          "path": "ip/service/netflix.srs",
+          "bytes": 524,
+          "sha256": "4903d53fcc977365cf333cd7ffe3b488274aee75d18d09eed531e1645b283deb"
+        }
+      }
+    },
+    "ip/service/twitter": {
+      "type": "ip",
+      "description": "X / Twitter 前缀（AS13414，BGP 观测）",
+      "total": 14,
+      "entries": {
+        "ip_cidr": 14
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "bgp_v4:13414",
+        "bgp_v6:13414"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/twitter.json",
+          "bytes": 467,
+          "sha256": "2ea00e970467801ff855d4aa6400ca248b51d9259649bf89362f9e77d59879b9"
+        },
+        "srs": {
+          "path": "ip/service/twitter.srs",
+          "bytes": 165,
+          "sha256": "4acff4374a2e807d3acd80dad463226f3dc1ed14e08bac7642d08166435a0b3c"
+        }
+      }
+    },
+    "ip/service/steam": {
+      "type": "ip",
+      "description": "Steam 前缀（AS32590，BGP 观测）",
+      "total": 32,
+      "entries": {
+        "ip_cidr": 32
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "bgp_v4:32590",
+        "bgp_v6:32590"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/steam.json",
+          "bytes": 965,
+          "sha256": "b0bfb053660587c8286cd09b2235c11df60b7705026c92dd8631cd1d50ab0048"
+        },
+        "srs": {
+          "path": "ip/service/steam.srs",
+          "bytes": 225,
+          "sha256": "50474380c30abdea5f6f0bee5eb6324db394522b7de1a5be3573827312e86220"
+        }
+      }
+    },
+    "ip/service/meta": {
+      "type": "ip",
+      "description": "Meta / Facebook 前缀（AS32934，BGP 观测）",
+      "total": 36,
+      "entries": {
+        "ip_cidr": 36
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "bgp_v4:32934",
+        "bgp_v6:32934"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/meta.json",
+          "bytes": 1016,
+          "sha256": "3bc499fe8c068ed6b4caa59c9a30b9fa0814919e7a2b0b0936d4d8876f3bbbb7"
+        },
+        "srs": {
+          "path": "ip/service/meta.srs",
+          "bytes": 268,
+          "sha256": "c66ad02c27497fbd693080168a3e0d9c6dba1981b717c2572b2a2a8c141cb0fd"
+        }
+      }
+    },
+    "ip/service/tiktok": {
+      "type": "ip",
+      "description": "TikTok / ByteDance 前缀（AS396986，BGP 观测）",
+      "total": 172,
+      "entries": {
+        "ip_cidr": 172
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "bgp_v4:396986",
+        "bgp_v6:396986"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/service/tiktok.json",
+          "bytes": 4793,
+          "sha256": "bdb6b0982d71bf73be51448de9da28bef06f9c534097a5b35a5d71cf81ef2929"
+        },
+        "srs": {
+          "path": "ip/service/tiktok.srs",
+          "bytes": 584,
+          "sha256": "87d3959fdafc2ec71df53ec8a9aa603c2354aece3fe9ab388aab74186d3c90b0"
+        }
+      }
+    },
+    "ip/operator/telecom": {
+      "type": "ip",
+      "description": "中国电信",
+      "total": 3276,
+      "entries": {
+        "ip_cidr": 3276
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "telecom"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/operator/telecom.json",
+          "bytes": 88577,
+          "sha256": "bda3f8f4756be1ec4be352ba51f17b5771b6c54b9b528dce8d4c2dbc853a9d6b"
+        },
+        "srs": {
+          "path": "ip/operator/telecom.srs",
+          "bytes": 12273,
+          "sha256": "99b5e77951f0249d6a3fc6afb1098f4ef283e18b337e7b34b33a2c59f432add8"
+        }
+      }
+    },
+    "ip/operator/unicom": {
+      "type": "ip",
+      "description": "中国联通",
+      "total": 2420,
+      "entries": {
+        "ip_cidr": 2420
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "unicom"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/operator/unicom.json",
+          "bytes": 66334,
+          "sha256": "00773e90f44e07880a1ecc4ea9080a67c05404ff63f4e6b3b0a8b3e162f3caf2"
+        },
+        "srs": {
+          "path": "ip/operator/unicom.srs",
+          "bytes": 9356,
+          "sha256": "f38c5bbf3697892cf606d2f99fc44f504369630a3c370e7709eda4717624d16a"
+        }
+      }
+    },
+    "ip/operator/mobile": {
+      "type": "ip",
+      "description": "中国移动",
+      "total": 1193,
+      "entries": {
+        "ip_cidr": 1193
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "mobile"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/operator/mobile.json",
+          "bytes": 32426,
+          "sha256": "2ae3620e9a78bf289a423dabd22b99a8b2fead657769e4fa3446a6266a47ce41"
+        },
+        "srs": {
+          "path": "ip/operator/mobile.srs",
+          "bytes": 4675,
+          "sha256": "3bedd6fb790b2ef8d0df56d5548da96a256fa99b162889b609cc0db06a5d36f8"
+        }
+      }
+    },
+    "ip/operator/cernet": {
+      "type": "ip",
+      "description": "教育网",
+      "total": 188,
+      "entries": {
+        "ip_cidr": 188
+      },
+      "rejects": {},
+      "subtracted": 0,
+      "excluded": 0,
+      "logical": false,
+      "sources": [
+        "cernet"
+      ],
+      "files": {
+        "json": {
+          "path": "ip/operator/cernet.json",
+          "bytes": 5162,
+          "sha256": "cd57400a541b2100f5592b966f28c5147879a391dca497719a06783a9de019a2"
+        },
+        "srs": {
+          "path": "ip/operator/cernet.srs",
+          "bytes": 888,
+          "sha256": "2fef46708f8b715d54ab293165b16e0e28a22a867b39b4eb8995d1e73ae14ed5"
+        }
+      }
+    }
+  }
+}
