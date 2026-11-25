@@ -630,6 +630,36 @@ class _IanaNameParser(HTMLParser):
             self._in_record = False
 
 
+class _IanaValueParser(HTMLParser):
+    """Extract ``<record><value>`` entries from an IANA zone registry."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.values: list[str] = []
+        self._in_record = False
+        self._in_value = False
+        self._value: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        del attrs
+        if tag == "record":
+            self._in_record = True
+        elif tag == "value" and self._in_record:
+            self._in_value = True
+            self._value = []
+
+    def handle_data(self, data: str) -> None:
+        if self._in_value:
+            self._value.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "value" and self._in_value:
+            self.values.append("".join(self._value).strip())
+            self._in_value = False
+        elif tag == "record":
+            self._in_record = False
+
+
 def load_iana_special_domains(
     ctx: OriginContext, src: SourceConfig, _selector: str
 ) -> Iterator[Entry]:
@@ -666,6 +696,41 @@ def load_iana_special_domains(
     if missing:
         raise BuildError(
             f"{src.name}: IANA registry is missing {', '.join(missing)}"
+        )
+    for name in sorted(found):
+        yield Entry("suffix", name, src.name)
+
+
+def load_iana_locally_served_zones(
+    ctx: OriginContext, src: SourceConfig, _selector: str
+) -> Iterator[Entry]:
+    """Selected reverse zones from IANA's locally-served DNS zone registry."""
+    raw = ctx.source_text(src)
+    parser = _IanaValueParser()
+    parser.feed(raw.decode("utf-8", "replace"))
+    parser.close()
+
+    include = src.options.get("include")
+    if not isinstance(include, list) or not include:
+        raise BuildError(f"{src.name}: 'include' must be a non-empty list")
+    wanted = {normalize_domain(str(item)) for item in include}
+
+    found: set[str] = set()
+    for raw_value in parser.values:
+        token = raw_value.strip().rstrip(".")
+        if not token:
+            continue
+        try:
+            name = normalize_domain(token)
+        except InvalidDomain:
+            continue
+        if name in wanted:
+            found.add(name)
+
+    missing = sorted(wanted - found)
+    if missing:
+        raise BuildError(
+            f"{src.name}: IANA zone registry is missing {', '.join(missing)}"
         )
     for name in sorted(found):
         yield Entry("suffix", name, src.name)
@@ -893,6 +958,7 @@ HANDLERS = {
     "dbip_country": load_dbip_country,
     "dlc": load_dlc,
     "iana_special_domains": load_iana_special_domains,
+    "iana_locally_served_zones": load_iana_locally_served_zones,
     "static_domains": load_static_domains,
     "dnsmasq_china": load_dnsmasq_china,
     "gfwlist": load_gfwlist,

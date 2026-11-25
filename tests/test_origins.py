@@ -13,6 +13,7 @@ from geobuild.origins import (
     load_gfwlist,
     load_github_meta,
     load_google_ipranges,
+    load_iana_locally_served_zones,
     load_iana_special,
     load_iana_special_domains,
     load_ip2asn,
@@ -339,6 +340,40 @@ class IanaSpecialDomainsTest(unittest.TestCase):
         )
         with self.assertRaises(BuildError):
             list(load_iana_special_domains(builder, source, ""))
+
+
+class IanaLocallyServedZonesTest(unittest.TestCase):
+    XML = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<registry xmlns="http://www.iana.org/assignments">
+  <record><value>10.IN-ADDR.ARPA</value></record>
+  <record><value>127.IN-ADDR.ARPA</value></record>
+  <record><value>D.F.IP6.ARPA</value></record>
+</registry>
+"""
+
+    def test_only_include_allowlist_is_emitted_as_suffix(self):
+        builder = FakeBuilder(self.XML.encode())
+        source = SourceConfig(
+            name="iana_reverse",
+            kind="iana_locally_served_zones",
+            options={"include": ["10.in-addr.arpa", "d.f.ip6.arpa"]},
+        )
+        entries = list(load_iana_locally_served_zones(builder, source, ""))
+        self.assertEqual(
+            [(entry.kind, entry.value) for entry in entries],
+            [("suffix", "10.in-addr.arpa"), ("suffix", "d.f.ip6.arpa")],
+        )
+
+    def test_missing_include_fails(self):
+        builder = FakeBuilder(self.XML.encode())
+        source = SourceConfig(
+            name="iana_reverse",
+            kind="iana_locally_served_zones",
+            options={"include": ["10.in-addr.arpa", "254.169.in-addr.arpa"]},
+        )
+        with self.assertRaises(BuildError):
+            list(load_iana_locally_served_zones(builder, source, ""))
 
 
 class StaticDomainsTest(unittest.TestCase):
